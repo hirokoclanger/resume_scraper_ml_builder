@@ -1,0 +1,26 @@
+{
+  "search_terms": [
+    "IT governance",
+    "IT strategy",
+    "Stratigc Project Management",
+    "IT process management",
+    "IT Project Portfolio Management",
+    "transformation"
+  ],
+  "locations": [
+    "Germany",
+    "Austria",
+    "Vietnam"
+  ],
+  "sites": [
+    "linkedin",
+    "indeed"
+  ],
+  "results_wanted": 50,
+  "hours_old": 720,
+  "ignore_companies": [
+    "micro1",
+    "crossing hurdles",
+    "mercor"
+  ]
+}

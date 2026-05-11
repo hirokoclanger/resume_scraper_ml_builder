@@ -1,0 +1,95 @@
+{
+  "profiles": [
+    {
+      "key": "governance_pm",
+      "label": "Governance Project Manager",
+      "detector_keywords": [
+        "governance", "compliance", "audit", "policy", "raid",
+        "controls", "framework", "steering"
+      ],
+      "preferred_tags": ["governance", "steering", "portfolio", "stakeholder_global"],
+      "boost_phrases": ["governance", "steering committee", "raid", "policy", "control framework"]
+    },
+    {
+      "key": "portfolio_pm",
+      "label": "Project Portfolio Manager",
+      "detector_keywords": [
+        "portfolio", "intake", "demand management", "prioritisation", "prioritization",
+        "book of work", "capacity planning", "pmo"
+      ],
+      "preferred_tags": ["portfolio", "governance", "budget", "leadership", "steering"],
+      "boost_phrases": ["portfolio", "intake", "demand", "budget", "book of work"]
+    },
+    {
+      "key": "product_owner",
+      "label": "Product Owner",
+      "detector_keywords": [
+        "product owner", "po", "backlog", "user stories", "sprint", "scrum",
+        "agile", "safe", "epics", "features", "roadmap"
+      ],
+      "preferred_tags": ["product_owner", "tooling", "delivery"],
+      "boost_phrases": ["product owner", "backlog", "sprint", "scrum", "user story"]
+    },
+    {
+      "key": "servicenow_owner",
+      "label": "ServiceNow Owner / Admin / Architect",
+      "detector_keywords": [
+        "servicenow", "itsm", "itom", "csm", "spm", "now platform",
+        "jira", "incident management", "change management"
+      ],
+      "preferred_tags": ["servicenow", "tooling", "product_owner"],
+      "boost_phrases": ["servicenow", "itsm", "jira", "leanix", "workflow"]
+    },
+    {
+      "key": "strategic_pm",
+      "label": "Strategic Project Manager",
+      "detector_keywords": [
+        "strategic", "strategy", "roadmap", "executive", "c-level", "cio",
+        "board", "five-year", "5-year", "business case", "investment"
+      ],
+      "preferred_tags": ["steering", "transformation", "leadership", "portfolio"],
+      "boost_phrases": ["strategic", "roadmap", "five-year", "cio", "business case"]
+    },
+    {
+      "key": "transformation_pm",
+      "label": "Transformation Project Manager",
+      "detector_keywords": [
+        "transformation", "change management", "migration", "rollout",
+        "modernisation", "modernization", "operating model", "restructure"
+      ],
+      "preferred_tags": ["transformation", "saas_cloud", "leadership", "stakeholder_global"],
+      "boost_phrases": ["transformation", "migration", "rollout", "operating model"]
+    }
+  ],
+  "variants": [
+    {
+      "key": "metrics",
+      "label": "Metrics-led",
+      "boost_tags": ["metric", "budget"],
+      "boost_factor": 1.5
+    },
+    {
+      "key": "leadership",
+      "label": "Leadership-led",
+      "boost_tags": ["leadership", "steering", "stakeholder_global"],
+      "boost_factor": 1.4
+    },
+    {
+      "key": "tooling",
+      "label": "Tooling-led",
+      "boost_tags": ["tooling", "servicenow", "leanix", "saas_cloud", "product_owner"],
+      "boost_factor": 1.5
+    }
+  ],
+  "role_budgets": {
+    "icelt_2026": 1,
+    "aixxen_solo_2026": 0,
+    "career_break_2026": 0,
+    "man_portfolio_2022": 6,
+    "man_techpm_2018": 3,
+    "man_supervisor_2012": 2,
+    "man_operator_2004": 1
+  },
+  "summary_target_chars": 380,
+  "skills_target_count": 8
+}

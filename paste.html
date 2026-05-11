@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Paste JD — Tailor resume</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0; padding: 24px 32px; background: #fafafa; color: #1a1a1a;
+    max-width: 1100px; margin: 0 auto;
+  }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header h1 { margin: 0; font-size: 22px; }
+  header .meta { color: #666; font-size: 13px; }
+  header a { color: #6b46c1; text-decoration: none; font-size: 13px;
+             border: 1px solid #6b46c1; padding: 6px 10px; border-radius: 4px; }
+  header a:hover { background: #6b46c1; color: white; }
+  .grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start;
+  }
+  .panel {
+    background: white; border: 1px solid #e5e5e5; border-radius: 8px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  label { display: block; font-weight: 600; font-size: 13px; margin: 8px 0 4px; }
+  input[type="text"], textarea {
+    width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border: 1px solid #d0d0d0; border-radius: 4px; font-size: 14px;
+    font-family: inherit;
+  }
+  textarea#jdText { min-height: 360px; font-family: ui-monospace, SF Mono, monospace; font-size: 13px; }
+  button {
+    background: #6b46c1; color: white; border: 1px solid #6b46c1;
+    padding: 10px 16px; border-radius: 4px; font-size: 14px; font-weight: 500;
+    cursor: pointer;
+  }
+  button:hover { background: #553a99; }
+  button:disabled { background: #aaa; border-color: #aaa; cursor: not-allowed; }
+  button.secondary { background: white; color: #555; border: 1px solid #ccc; }
+  button.secondary:hover { background: #eee; }
+  .hint { font-size: 12px; color: #777; margin-top: 4px; }
+  .result-block { background: #f7f5fc; border: 1px solid #d8d0ec; border-radius: 6px;
+                  padding: 12px 14px; margin-top: 12px; font-size: 13px; }
+  .result-block ul { margin: 6px 0 0; padding-left: 22px; }
+  .result-block a { color: #6b46c1; }
+  .preview {
+    padding: 14px 16px; background: white; border: 1px solid #e5e5e5;
+    border-radius: 8px; font-size: 13px; line-height: 1.5;
+    max-height: 700px; overflow-y: auto;
+  }
+  .preview h2 { font-size: 14px; margin: 14px 0 6px; color: #222; }
+  .preview h3 { font-size: 13px; margin: 10px 0 4px; color: #444; }
+  .preview ul { margin: 4px 0; padding-left: 22px; }
+  .variant-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  .variant-tabs button {
+    background: white; color: #555; border: 1px solid #ccc;
+    padding: 4px 10px; font-size: 12px;
+  }
+  .variant-tabs button.active { background: #6b46c1; color: white; border-color: #6b46c1; }
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; background: #222; color: white;
+    padding: 10px 16px; border-radius: 4px; font-size: 13px;
+    opacity: 0; transition: opacity 0.2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { background: #c0392b; }
+  .recent { font-size: 12px; color: #555; margin-top: 12px; }
+  .recent a { color: #6b46c1; text-decoration: none; }
+  .row { display: flex; gap: 10px; align-items: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Paste JD → tailored PDFs</h1>
+  <span class="meta">Pure local retrieval — no API calls.</span>
+  <span style="margin-left:auto"></span>
+  <a href="/">← Back to job finder</a>
+</header>
+
+<div class="grid">
+  <div>
+    <div class="panel">
+      <div class="row">
+        <div style="flex:1">
+          <label for="company">Company</label>
+          <input type="text" id="company" placeholder="Acme GmbH">
+        </div>
+        <div style="flex:2">
+          <label for="title">Job title</label>
+          <input type="text" id="title" placeholder="Senior IT Portfolio Manager">
+        </div>
+      </div>
+      <div class="hint">These become part of the PDF filename: <code>Eiselt__{Company}__{Title}__{variant}.pdf</code></div>
+
+      <label for="jdText" style="margin-top:14px">Job description</label>
+      <textarea id="jdText" placeholder="Paste the full job description here. The engine matches bullets against keywords like portfolio, governance, ServiceNow, transformation, steering, RAID, etc."></textarea>
+      <div class="hint" id="jdHint">0 chars</div>
+
+      <div class="row" style="margin-top:14px">
+        <button id="btnPreview" class="secondary">Preview brief</button>
+        <button id="btnGenerate">Generate PDFs (3 variants)</button>
+        <span id="status" style="color:#666;font-size:13px"></span>
+      </div>
+
+      <div id="result" class="result-block" style="display:none"></div>
+    </div>
+
+    <div class="panel">
+      <strong style="font-size:13px">Recent PDFs</strong>
+      <div id="recent" class="recent">Loading…</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <div class="variant-tabs">
+        <button class="active" data-variant="metrics">Metrics-led</button>
+        <button data-variant="leadership">Leadership-led</button>
+        <button data-variant="tooling">Tooling-led</button>
+      </div>
+      <div id="preview" class="preview"><em>Paste a JD and click "Preview brief" to see which bullets the engine would pick.</em></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const toastEl = document.getElementById("toast");
+function showToast(msg, err) {
+  toastEl.textContent = msg;
+  toastEl.classList.toggle("error", !!err);
+  toastEl.classList.add("show");
+  setTimeout(() => toastEl.classList.remove("show"), 2400);
+}
+
+function escapeHtml(s) {
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+function renderMarkdownLite(md) {
+  if (!md) return "";
+  const lines = md.split(/\r?\n/);
+  let html = ""; let inList = false;
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (!line) {
+      if (inList) { html += "</ul>"; inList = false; }
+      html += "\n";
+      continue;
+    }
+    if (/^###\s/.test(line)) { if (inList) { html += "</ul>"; inList = false; } html += `<h3>${escapeHtml(line.replace(/^###\s+/, ""))}</h3>`; continue; }
+    if (/^##\s/.test(line)) { if (inList) { html += "</ul>"; inList = false; } html += `<h2>${escapeHtml(line.replace(/^##\s+/, ""))}</h2>`; continue; }
+    if (/^[-*]\s+/.test(line)) {
+      if (!inList) { html += "<ul>"; inList = true; }
+      html += `<li>${escapeInline(line.replace(/^[-*]\s+/, ""))}</li>`;
+      continue;
+    }
+    if (inList) { html += "</ul>"; inList = false; }
+    html += `<p>${escapeInline(line)}</p>`;
+  }
+  if (inList) html += "</ul>";
+  return html;
+}
+function escapeInline(s) {
+  let t = escapeHtml(s);
+  t = t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  return t;
+}
+
+const jdEl = document.getElementById("jdText");
+const jdHint = document.getElementById("jdHint");
+const companyEl = document.getElementById("company");
+const titleEl = document.getElementById("title");
+const previewEl = document.getElementById("preview");
+const statusEl = document.getElementById("status");
+const resultEl = document.getElementById("result");
+
+let currentVariant = "metrics";
+
+jdEl.addEventListener("input", () => {
+  jdHint.textContent = `${jdEl.value.length} chars`;
+});
+
+document.querySelectorAll(".variant-tabs button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".variant-tabs button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentVariant = btn.dataset.variant;
+    if (previewEl.dataset.lastJd) doPreview();
+  });
+});
+
+async function doPreview() {
+  const jd = jdEl.value.trim();
+  if (jd.length < 20) {
+    showToast("Paste a JD first (at least a paragraph)", true);
+    return;
+  }
+  previewEl.innerHTML = "<em>Ranking bullets…</em>";
+  try {
+    const res = await fetch("/api/tailor_preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jd_text: jd, variant: currentVariant }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      previewEl.innerHTML = `<p style="color:#c0392b">${escapeHtml(data.error)}</p>`;
+      return;
+    }
+    previewEl.dataset.lastJd = jd;
+    previewEl.innerHTML = renderMarkdownLite(data.tailoring || "");
+  } catch (e) {
+    previewEl.innerHTML = `<p style="color:#c0392b">Network error: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+document.getElementById("btnPreview").addEventListener("click", doPreview);
+
+document.getElementById("btnGenerate").addEventListener("click", async () => {
+  const jd = jdEl.value.trim();
+  if (jd.length < 20) {
+    showToast("Paste a JD first (at least a paragraph)", true);
+    return;
+  }
+  const company = companyEl.value.trim() || "Unknown";
+  const title = titleEl.value.trim() || "Role";
+  const btn = document.getElementById("btnGenerate");
+  btn.disabled = true;
+  statusEl.textContent = "Rendering 3 PDFs (5-10 s)…";
+  resultEl.style.display = "none";
+  try {
+    const res = await fetch("/api/tailor_pdf_freeform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jd_text: jd, company, title }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      statusEl.textContent = "";
+      resultEl.style.display = "block";
+      resultEl.innerHTML = `<p style="color:#c0392b"><strong>Error:</strong> ${escapeHtml(data.error)}</p>`;
+      return;
+    }
+    statusEl.textContent = "";
+    const links = (data.pdfs || []).map(p =>
+      `<li><a href="${escapeHtml(p.url)}" target="_blank">${escapeHtml(p.filename)}</a> ` +
+      `<span style="color:#777">— ${escapeHtml(p.variant_label)} · profile: ${escapeHtml(p.profile_label)} · ${(p.size_bytes/1024).toFixed(0)} KB</span></li>`
+    ).join("");
+    resultEl.style.display = "block";
+    resultEl.innerHTML = `<strong>Generated 3 PDFs</strong><ul>${links}</ul>`;
+    loadRecent();
+  } catch (e) {
+    statusEl.textContent = "";
+    resultEl.style.display = "block";
+    resultEl.innerHTML = `<p style="color:#c0392b">Network error: ${escapeHtml(e.message)}</p>`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+async function loadRecent() {
+  try {
+    const res = await fetch("/api/tailored");
+    const data = await res.json();
+    const list = (data.pdfs || []).slice(0, 12);
+    if (!list.length) {
+      document.getElementById("recent").innerHTML = "<em>No PDFs generated yet.</em>";
+      return;
+    }
+    document.getElementById("recent").innerHTML = list.map(p =>
+      `<div><a href="${escapeHtml(p.url)}" target="_blank">${escapeHtml(p.filename)}</a> <span style="color:#999">${(p.size_bytes/1024).toFixed(0)} KB</span></div>`
+    ).join("");
+  } catch (e) {
+    document.getElementById("recent").textContent = "Could not load recent list.";
+  }
+}
+loadRecent();
+</script>
+
+</body>
+</html>

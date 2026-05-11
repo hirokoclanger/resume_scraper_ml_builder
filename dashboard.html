@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Job finder dashboard</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #ffffff; color: #1a1a1a; margin: 0; padding: 20px;
+  font-size: 14px; line-height: 1.45;
+}
+header {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px;
+  border-bottom: 1px solid #e5e5e5; padding-bottom: 14px; margin-bottom: 18px;
+}
+header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+header .meta { color: #666; font-size: 13px; }
+header .pill { background: #f0f0f0; border-radius: 999px; padding: 3px 10px; font-size: 12px; color: #444; }
+.warn-banner {
+  background: #fff7e6; border: 1px solid #f0c674; border-radius: 8px;
+  padding: 12px 16px; margin-bottom: 18px; color: #6b4a00; font-size: 13px; line-height: 1.5;
+}
+.warn-banner strong { color: #4a3300; }
+.controls {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+  margin-bottom: 18px;
+}
+@media (max-width: 900px) { .controls { grid-template-columns: 1fr; } }
+.panel {
+  background: #fafafa; border: 1px solid #ececec; border-radius: 10px; padding: 14px;
+}
+.panel h3 { margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: #555; }
+.panel .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 8px; }
+.panel label {
+  font-size: 12px; color: #555; display: flex; flex-direction: column; gap: 4px;
+}
+.panel input[type="number"], .panel input[type="text"], .panel select {
+  padding: 5px 8px; border: 1px solid #d0d0d0; border-radius: 6px;
+  font-size: 13px; background: white; color: #222;
+}
+.panel input[type="text"] { width: 200px; }
+.panel input[type="number"] { width: 80px; }
+.checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #444; }
+button {
+  padding: 7px 14px; border: 1px solid #2a3f5f; background: #2a3f5f; color: white;
+  border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 500;
+}
+button:hover { background: #1f3148; }
+button:disabled { background: #999; border-color: #999; cursor: not-allowed; }
+button.secondary { background: white; color: #2a3f5f; }
+button.secondary:hover { background: #f0f4f8; }
+.log-box {
+  background: #1e1e1e; color: #e0e0e0; font-family: "SF Mono", Menlo, Monaco, monospace;
+  font-size: 11px; padding: 10px; border-radius: 6px;
+  height: 160px; overflow-y: auto; white-space: pre-wrap; margin-top: 8px;
+  display: none;
+}
+.log-box.active { display: block; }
+.log-box.error { border: 2px solid #c0392b; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  background: #2a3f5f; color: white; text-align: left; padding: 9px 10px;
+  font-weight: 500; font-size: 12px; letter-spacing: 0.3px; text-transform: uppercase;
+  position: sticky; top: 0; z-index: 1;
+}
+tbody tr { border-bottom: 1px solid #eee; vertical-align: top; }
+tbody tr:hover { background: #fafafa; }
+tbody tr.seen { opacity: 0.5; }
+tbody td { padding: 10px 10px; }
+.score {
+  display: inline-block; width: 38px; text-align: center; border-radius: 6px;
+  padding: 4px 0; font-weight: 600; font-size: 13px;
+}
+.verdict {
+  display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px;
+  font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.verdict.strong { background: #c6efce; color: #14532d; }
+.verdict.maybe { background: #ffeb9c; color: #6b4400; }
+.verdict.weak { background: #ffd7d7; color: #7a1f1f; }
+.verdict.skip { background: #eeeeee; color: #555; }
+.title { font-weight: 600; color: #1a1a1a; line-height: 1.3; }
+.company { color: #444; }
+.location { color: #666; font-size: 12px; }
+.posted { color: #888; font-size: 12px; }
+.reason { color: #555; font-size: 12px; line-height: 1.45; max-width: 380px; }
+a.linkedin {
+  display: inline-block; background: #0a66c2; color: white;
+  padding: 5px 11px; border-radius: 6px; text-decoration: none; font-size: 12px;
+  font-weight: 500; white-space: nowrap;
+}
+a.linkedin:hover { background: #084d92; }
+.actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.hide-btn {
+  background: transparent; border: 1px solid #ccc; color: #666;
+  font-size: 11px; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-weight: normal;
+}
+.hide-btn:hover { background: #f0f0f0; color: #333; }
+.empty { text-align: center; padding: 40px; color: #888; font-style: italic; }
+.footer {
+  margin-top: 24px; padding-top: 14px; border-top: 1px solid #eee;
+  font-size: 12px; color: #888;
+}
+.stats {
+  display: flex; gap: 18px; margin-bottom: 14px; font-size: 13px; color: #444; flex-wrap: wrap;
+}
+.stats span strong { color: #1a1a1a; }
+.spinner {
+  display: inline-block; width: 12px; height: 12px;
+  border: 2px solid #ccc; border-top-color: #2a3f5f;
+  border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.config-editor textarea {
+  width: 100%; min-height: 100px; padding: 6px 8px;
+  border: 1px solid #d0d0d0; border-radius: 6px;
+  font-family: "SF Mono", Menlo, monospace; font-size: 12px;
+  background: white; color: #222; resize: vertical;
+}
+.config-editor .grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+@media (max-width: 700px) { .config-editor .grid { grid-template-columns: 1fr; } }
+.config-editor label {
+  font-size: 12px; color: #555; font-weight: 500; display: block; margin-bottom: 4px;
+}
+.config-editor .sub { font-size: 11px; color: #888; font-weight: normal; margin-bottom: 6px; }
+.site-checkboxes { display: flex; gap: 14px; flex-wrap: wrap; padding: 8px 0; }
+.site-checkboxes label {
+  display: flex; gap: 6px; align-items: center; font-weight: normal;
+  margin-bottom: 0; cursor: pointer; font-size: 13px;
+}
+.toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: #14532d; color: white; padding: 10px 18px;
+  border-radius: 8px; font-size: 13px; z-index: 100;
+  opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+.toast.show { opacity: 1; }
+.toast.error { background: #7a1f1f; }
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: none; align-items: center; justify-content: center; z-index: 50;
+}
+.modal-backdrop.show { display: flex; }
+.modal {
+  background: white; border-radius: 10px; max-width: 760px; width: 92%;
+  max-height: 86vh; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.modal header.modal-head {
+  padding: 14px 18px; border-bottom: 1px solid #eee;
+  display: flex; align-items: center; gap: 10px; justify-content: space-between;
+}
+.modal-head h2 { margin: 0; font-size: 16px; }
+.modal-head .close {
+  background: transparent; border: none; font-size: 22px; line-height: 1;
+  color: #666; cursor: pointer; padding: 0 4px;
+}
+.modal-body {
+  padding: 18px; overflow-y: auto; flex: 1;
+  font-size: 14px; line-height: 1.55;
+}
+.modal-body h2, .modal-body h3 { margin-top: 18px; margin-bottom: 6px; }
+.modal-body h2 { font-size: 15px; color: #1f3148; }
+.modal-body h3 { font-size: 14px; color: #444; }
+.modal-body p, .modal-body li { font-size: 13px; }
+.modal-body ul { padding-left: 22px; }
+.modal-body code {
+  background: #f0f0f0; padding: 1px 5px; border-radius: 3px;
+  font-size: 12px;
+}
+.modal-foot {
+  padding: 10px 18px; border-top: 1px solid #eee;
+  display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;
+}
+/* ---- Editable tailoring view ---- */
+.ed-banner {
+  background: #f7f4ff; border: 1px solid #d8d0ec; border-radius: 6px;
+  padding: 10px 14px; font-size: 13px; margin-bottom: 14px;
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.ed-banner strong { color: #4a2d96; }
+.ed-banner .variant-tabs { display: flex; gap: 4px; margin-left: auto; }
+.ed-banner .variant-tabs button {
+  background: white; color: #555; border: 1px solid #ccc;
+  padding: 3px 9px; font-size: 12px; border-radius: 4px; cursor: pointer;
+}
+.ed-banner .variant-tabs button.active {
+  background: #6b46c1; color: white; border-color: #6b46c1;
+}
+.ed-section { margin: 14px 0; }
+.ed-section h3 {
+  font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: #6b46c1; margin: 14px 0 6px; border-bottom: 1px solid #e8e2f5;
+  padding-bottom: 4px;
+}
+.ed-bullet {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 6px 8px; border-radius: 4px;
+  margin-bottom: 4px; font-size: 13px; line-height: 1.45;
+}
+.ed-bullet:hover { background: #f7f5fc; }
+.ed-bullet .text { flex: 1; }
+.ed-bullet button {
+  background: transparent; color: #c0392b; border: 1px solid transparent;
+  font-size: 16px; line-height: 1; padding: 0 6px; cursor: pointer;
+  border-radius: 3px;
+}
+.ed-bullet:hover button { border-color: #f4d4cf; }
+.ed-bullet button:hover { background: #f8d7d4; }
+.ed-role {
+  border: 1px solid #e8e2f5; border-radius: 6px;
+  padding: 10px 12px; margin-bottom: 10px;
+}
+.ed-role.removed {
+  opacity: 0.45; background: #f5f3fa;
+}
+.ed-role-head {
+  display: flex; gap: 8px; align-items: center; margin-bottom: 6px;
+}
+.ed-role-head .title {
+  flex: 1; font-weight: 600; font-size: 13px; color: #222;
+}
+.ed-role-head .meta {
+  font-size: 12px; color: #666; margin-left: 6px;
+}
+.ed-role-head button {
+  background: white; color: #555; border: 1px solid #ccc;
+  padding: 2px 8px; font-size: 12px; border-radius: 4px; cursor: pointer;
+}
+.ed-role-head button.danger { color: #c0392b; border-color: #f4c4be; }
+.ed-add {
+  margin-top: 4px; font-size: 12px; display: flex; gap: 6px; align-items: center;
+}
+.ed-add select {
+  flex: 1; padding: 4px 6px; font-size: 12px;
+  border: 1px solid #ccc; border-radius: 4px; background: white;
+}
+.ed-add button {
+  background: #6b46c1; color: white; border: 1px solid #6b46c1;
+  padding: 3px 10px; font-size: 12px; border-radius: 4px; cursor: pointer;
+}
+.ed-add button:hover { background: #553a99; }
+.ed-summary-card {
+  background: #fcfbff; border: 1px solid #e8e2f5; border-radius: 6px;
+  padding: 10px 12px; font-size: 13px; line-height: 1.5;
+  display: flex; gap: 8px; align-items: flex-start;
+}
+.ed-summary-card.empty { color: #888; font-style: italic; }
+.ed-summary-card .text { flex: 1; }
+.ed-summary-card select {
+  font-size: 12px; padding: 4px; border: 1px solid #ccc; border-radius: 4px;
+  background: white; max-width: 240px;
+}
+#tailorRenderResults {
+  padding: 10px 18px; border-top: 1px solid #eee;
+  background: #f9f8fd; font-size: 12px;
+}
+#tailorRenderResults a { color: #6b46c1; }
+#tailorRenderResults .err { color: #c0392b; }
+.modal-foot .variant-render-btn {
+  flex: 1; min-width: 130px;
+}
+.modal-foot .variant-render-btn.metrics { background: #6b46c1; border-color: #6b46c1; }
+.modal-foot .variant-render-btn.leadership { background: #2a8a9c; border-color: #2a8a9c; }
+.modal-foot .variant-render-btn.tooling { background: #c98c2e; border-color: #c98c2e; }
+.modal-foot .variant-render-btn:disabled { opacity: 0.6; }
+.tailor-btn {
+  background: #6b46c1; border: 1px solid #6b46c1; color: white;
+  padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 500;
+  cursor: pointer; white-space: nowrap;
+}
+.tailor-btn:hover { background: #553a99; }
+.tailor-btn:disabled { background: #999; border-color: #999; }
+.expand-toggle {
+  background: transparent; border: 1px solid #ccc; color: #666;
+  font-size: 11px; padding: 3px 6px; border-radius: 5px;
+  cursor: pointer; font-weight: normal; min-width: 28px;
+}
+.expand-toggle:hover { background: #f0f4f8; color: #2a3f5f; }
+.expand-toggle.open { background: #2a3f5f; color: white; border-color: #2a3f5f; }
+tr.desc-row td {
+  background: #fafbfc; border-top: none; padding: 12px 18px;
+  font-size: 12px; color: #444; line-height: 1.55;
+}
+tr.desc-row .desc-content {
+  max-height: 320px; overflow-y: auto;
+  white-space: pre-wrap; padding: 8px;
+  background: white; border: 1px solid #e5e5e5; border-radius: 6px;
+}
+.score-cell { font-size: 12px; }
+details.config-section { margin-bottom: 18px; }
+details.config-section summary {
+  cursor: pointer; padding: 12px 16px; background: #f5f5f5;
+  border: 1px solid #e0e0e0; border-radius: 8px;
+  font-size: 13px; font-weight: 500; color: #333;
+  list-style: none;
+}
+details.config-section summary::-webkit-details-marker { display: none; }
+details.config-section summary::before {
+  content: "▸"; display: inline-block; margin-right: 8px;
+  transition: transform 0.2s;
+}
+details.config-section[open] summary::before { transform: rotate(90deg); }
+details.config-section .panel { margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Job finder</h1>
+  <span class="pill" id="scrapedAt">No data yet</span>
+  <span class="pill" id="scoredCount"></span>
+  <span class="meta">Candidate: Philipp Eiselt</span>
+  <span style="margin-left:auto"></span>
+  <a href="/paste" class="secondary" style="text-decoration:none;border:1px solid #6b46c1;color:#6b46c1;padding:6px 10px;border-radius:4px;font-size:13px;margin-right:8px">Paste JD → PDF</a>
+  <button id="btnStopServer" class="secondary" style="border-color:#c0392b;color:#c0392b">Stop server</button>
+</header>
+
+<div class="warn-banner" id="warnBanner" style="display:none">
+  <strong>Heads up:</strong> <span id="warnText"></span>
+</div>
+
+<div class="controls">
+  <div class="panel">
+    <h3>Pull jobs (LinkedIn + Indeed via JobSpy)</h3>
+    <div class="row">
+      <label>Results per search
+        <input type="number" id="resultsWanted" min="10" max="200" value="30" step="10">
+      </label>
+      <label>Posted within (hours)
+        <input type="number" id="hoursOld" min="24" max="2160" value="720" step="24">
+      </label>
+      <button id="btnScrape">Run scrape</button>
+    </div>
+    <div style="font-size:12px;color:#666;margin-top:6px">
+      Edit search terms, countries and sites below. <span id="planSummary"></span>
+    </div>
+    <div class="log-box" id="scrapeLog"></div>
+  </div>
+  <div class="panel">
+    <h3>Re-score the existing pull</h3>
+    <div class="row">
+      <span style="font-size:12px;color:#666">Two scorers run independently. Each writes its own column. Compare side by side.</span>
+    </div>
+    <div class="row">
+      <button id="btnScore">Run scorer (themes)</button>
+      <button id="btnScoreV2" style="background:#6b46c1;border-color:#6b46c1">Run scorer (graph)</button>
+      <button id="btnReload" class="secondary">Reload data</button>
+    </div>
+    <div class="log-box" id="scoreLog"></div>
+  </div>
+</div>
+
+<details class="config-section">
+  <summary>Edit search configuration</summary>
+  <div class="panel config-editor">
+    <div class="grid">
+      <div>
+        <label>Search terms</label>
+        <div class="sub">One per line. Each term runs against every country and site.</div>
+        <textarea id="cfgTerms" placeholder="IT governance&#10;IT strategy&#10;PMO"></textarea>
+      </div>
+      <div>
+        <label>Countries / locations</label>
+        <div class="sub">One per line. Examples: Singapore, Vietnam, Hong Kong, Australia, Malaysia, Japan, India.</div>
+        <textarea id="cfgLocations" placeholder="Singapore&#10;Vietnam"></textarea>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <label>Sites</label>
+      <div class="site-checkboxes">
+        <label><input type="checkbox" class="cfgSite" value="linkedin"> LinkedIn</label>
+        <label><input type="checkbox" class="cfgSite" value="indeed"> Indeed</label>
+        <label><input type="checkbox" class="cfgSite" value="glassdoor"> Glassdoor (flaky)</label>
+        <label><input type="checkbox" class="cfgSite" value="zip_recruiter"> ZipRecruiter</label>
+        <label><input type="checkbox" class="cfgSite" value="google"> Google Jobs</label>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <label>Companies to ignore</label>
+      <div class="sub">One per line. Case-insensitive substring match on company name.</div>
+      <textarea id="cfgIgnore" style="min-height:60px" placeholder="micro1&#10;mercor"></textarea>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+      <button id="btnSaveConfig">Save configuration</button>
+      <button id="btnReloadConfig" class="secondary">Reload from disk</button>
+      <span id="cfgPlan" style="font-size:12px;color:#666"></span>
+    </div>
+  </div>
+</details>
+
+<div class="stats">
+  <span><strong id="statTotal">0</strong> total scored</span>
+  <span><strong id="statShown">0</strong> shown</span>
+  <span><strong id="statStrong">0</strong> strong</span>
+  <span><strong id="statMaybe">0</strong> maybe</span>
+  <span><strong id="statWeak">0</strong> weak</span>
+  <span><strong id="statSeen">0</strong> already-seen</span>
+</div>
+
+<div class="panel" style="margin-bottom:18px">
+  <div class="row">
+    <label>Min fit score
+      <input type="number" id="minScore" min="0" max="100" value="40" step="5">
+    </label>
+    <label>Verdict
+      <select id="verdictFilter">
+        <option value="all">All</option>
+        <option value="strong">Strong only</option>
+        <option value="strong,maybe">Strong + Maybe</option>
+        <option value="strong,maybe,weak">Strong + Maybe + Weak</option>
+      </select>
+    </label>
+    <label>Location contains
+      <input type="text" id="locFilter" placeholder="e.g. Singapore, Remote">
+    </label>
+    <label>Title contains
+      <input type="text" id="titleFilter" placeholder="e.g. portfolio, governance">
+    </label>
+    <div class="checkbox-row">
+      <input type="checkbox" id="hideSeen" checked>
+      <label for="hideSeen" style="cursor:pointer">Hide already-seen</label>
+    </div>
+    <button id="exportCsv" class="secondary">Download CSV</button>
+    <button id="resetSeen" class="secondary">Reset seen</button>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:48px" title="Themes scorer">V1</th>
+      <th style="width:48px" title="Graph scorer">V2</th>
+      <th style="width:80px">Verdict</th>
+      <th>Title</th>
+      <th>Company</th>
+      <th>Location</th>
+      <th>Posted</th>
+      <th>Why fit</th>
+      <th style="width:140px">Action</th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
+
+<div class="footer">
+  Server running at <code>http://localhost:8765</code>. Restart with <code>python3 server.py</code> if it stops.
+  Scoring rules live in <code>score_jobs.py</code>. Search config in <code>config.json</code> (or edit above).
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-backdrop" id="tailorModal">
+  <div class="modal">
+    <header class="modal-head">
+      <h2 id="tailorTitle">Tailor resume</h2>
+      <button class="close" id="tailorClose">&times;</button>
+    </header>
+    <div class="modal-body" id="tailorBody">
+      <p>Loading…</p>
+    </div>
+    <div id="tailorRenderResults" style="display:none"></div>
+    <div class="modal-foot">
+      <button class="variant-render-btn metrics" data-variant="metrics">Render Metrics PDF</button>
+      <button class="variant-render-btn leadership" data-variant="leadership">Render Leadership PDF</button>
+      <button class="variant-render-btn tooling" data-variant="tooling">Render Tooling PDF</button>
+      <button id="tailorCloseBtn" class="secondary">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SEEN_KEY = "jobfinder.seen.v1";
+let expandedIds = new Set();
+
+function labelForLink(url) {
+  if (!url) return "Open";
+  const u = url.toLowerCase();
+  if (u.includes("linkedin.com")) return "Open in LinkedIn";
+  if (u.includes("indeed.")) return "Open in Indeed";
+  if (u.includes("glassdoor.")) return "Open in Glassdoor";
+  if (u.includes("ziprecruiter.")) return "Open in ZipRecruiter";
+  if (u.includes("google.com/search") || u.includes("jobs.google")) return "Open in Google Jobs";
+  return "Open job";
+}
+let DATA = { jobs: [], scored_count: 0, source_count: 0, scraped_at_utc: "" };
+let seen = loadSeen();
+
+function loadSeen() {
+  try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || "[]")); }
+  catch (e) { return new Set(); }
+}
+function saveSeen(set) { localStorage.setItem(SEEN_KEY, JSON.stringify([...set])); }
+
+function escapeHtml(s) {
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+function scoreColor(s) {
+  if (s >= 75) return { bg: "#c6efce", color: "#14532d" };
+  if (s >= 55) return { bg: "#ffeb9c", color: "#6b4400" };
+  if (s >= 35) return { bg: "#ffd7d7", color: "#7a1f1f" };
+  return { bg: "#eeeeee", color: "#666" };
+}
+
+async function loadData() {
+  try {
+    const res = await fetch("/api/scored", { cache: "no-store" });
+    DATA = await res.json();
+    if (!DATA.jobs) DATA.jobs = [];
+    document.getElementById("scrapedAt").textContent = "Scraped: " + (DATA.scraped_at_utc || "no data");
+    document.getElementById("scoredCount").textContent = (DATA.scored_count || DATA.jobs.length) + " scored / " + (DATA.source_count || "?") + " raw";
+    const strongCount = DATA.jobs.filter(j => j.verdict === "strong").length;
+    const banner = document.getElementById("warnBanner");
+    if (DATA.jobs.length === 0) {
+      banner.style.display = "block";
+      document.getElementById("warnText").textContent = "No scored data yet. Click 'Run scrape' then 'Run scorer'.";
+    } else if (strongCount === 0) {
+      banner.style.display = "block";
+      document.getElementById("warnText").textContent = "0 strong matches in the current pool. The bebity actor often returns US-only jobs regardless of location filter; consider switching actors or trying different search URLs in config.json.";
+    } else {
+      banner.style.display = "none";
+    }
+    render();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function applyFilters() {
+  const minScore = parseInt(document.getElementById("minScore").value, 10) || 0;
+  const verdictFilterRaw = document.getElementById("verdictFilter").value;
+  const verdictAllowed = verdictFilterRaw === "all" ? null : new Set(verdictFilterRaw.split(","));
+  const locFilter = document.getElementById("locFilter").value.trim().toLowerCase();
+  const titleFilter = document.getElementById("titleFilter").value.trim().toLowerCase();
+  const hideSeenChecked = document.getElementById("hideSeen").checked;
+  const all = DATA.jobs;
+  const filtered = all.filter(j => {
+    if (j.fit_score < minScore) return false;
+    if (verdictAllowed && !verdictAllowed.has(j.verdict)) return false;
+    if (locFilter && !(j.location || "").toLowerCase().includes(locFilter)) return false;
+    if (titleFilter && !(j.title || "").toLowerCase().includes(titleFilter)) return false;
+    if (hideSeenChecked && seen.has(j.id)) return false;
+    return true;
+  });
+  return { all, filtered };
+}
+
+function render() {
+  const { all, filtered } = applyFilters();
+  const tbody = document.getElementById("rows");
+  document.getElementById("statTotal").textContent = all.length;
+  document.getElementById("statShown").textContent = filtered.length;
+  document.getElementById("statStrong").textContent = all.filter(j => j.verdict === "strong").length;
+  document.getElementById("statMaybe").textContent = all.filter(j => j.verdict === "maybe").length;
+  document.getElementById("statWeak").textContent = all.filter(j => j.verdict === "weak").length;
+  document.getElementById("statSeen").textContent = all.filter(j => seen.has(j.id)).length;
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">No jobs match these filters. Loosen the score or verdict.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(j => {
+    const sc1 = scoreColor(j.fit_score || 0);
+    const sc2 = scoreColor(j.fit_score_v2 || 0);
+    const isSeen = seen.has(j.id);
+    const isOpen = expandedIds.has(j.id);
+    const v2Cell = (j.fit_score_v2 != null)
+      ? `<span class="score" style="background:${sc2.bg};color:${sc2.color}">${j.fit_score_v2}</span>`
+      : `<span style="color:#bbb;font-size:11px">—</span>`;
+    const verdictMain = j.verdict_v2 || j.verdict || "skip";
+    const reasonText = j.fit_reasoning_v2 || j.fit_reasoning || "";
+    const linkLabel = labelForLink(j.jobUrl);
+    const escapedDesc = escapeHtml(j.description || "(no description captured)");
+    const mainRow = `
+      <tr class="${isSeen ? "seen" : ""}" data-id="${escapeHtml(j.id)}">
+        <td class="score-cell"><span class="score" style="background:${sc1.bg};color:${sc1.color}">${j.fit_score != null ? j.fit_score : "—"}</span></td>
+        <td class="score-cell">${v2Cell}</td>
+        <td><span class="verdict ${verdictMain}">${verdictMain}</span></td>
+        <td>
+          <div class="title">${escapeHtml(j.title)}</div>
+          <div class="posted">${escapeHtml(j.workType || j.experienceLevel || "")}</div>
+        </td>
+        <td><div class="company">${escapeHtml(j.companyName)}</div></td>
+        <td><div class="location">${escapeHtml(j.location)}</div></td>
+        <td><div class="posted">${escapeHtml(j.publishedAt || "")}</div></td>
+        <td>
+          <div class="reason">${escapeHtml(reasonText)}</div>
+          <button class="expand-toggle ${isOpen ? "open" : ""}" data-action="toggle-desc" data-id="${escapeHtml(j.id)}" style="margin-top:4px">
+            ${isOpen ? "▾ Hide description" : "▸ Show description"}
+          </button>
+        </td>
+        <td>
+          <div class="actions">
+            <a class="linkedin" href="${escapeHtml(j.jobUrl)}" target="_blank" rel="noopener">${linkLabel}</a>
+            <button class="tailor-btn" data-action="tailor" data-id="${escapeHtml(j.id)}">Tailor resume</button>
+            <button class="hide-btn" data-action="toggle-seen" data-id="${escapeHtml(j.id)}">${isSeen ? "Mark unseen" : "Mark seen"}</button>
+          </div>
+        </td>
+      </tr>
+    `;
+    const descRow = isOpen
+      ? `<tr class="desc-row" data-id="${escapeHtml(j.id)}"><td colspan="9"><div class="desc-content">${escapedDesc}</div></td></tr>`
+      : "";
+    return mainRow + descRow;
+  }).join("");
+}
+
+document.getElementById("rows").addEventListener("click", (e) => {
+  const seenBtn = e.target.closest("button[data-action='toggle-seen']");
+  if (seenBtn) {
+    const id = seenBtn.dataset.id;
+    if (seen.has(id)) seen.delete(id);
+    else seen.add(id);
+    saveSeen(seen);
+    render();
+    return;
+  }
+  const tailorBtn = e.target.closest("button[data-action='tailor']");
+  if (tailorBtn) {
+    openTailorModal(tailorBtn.dataset.id);
+    return;
+  }
+  const descBtn = e.target.closest("button[data-action='toggle-desc']");
+  if (descBtn) {
+    const id = descBtn.dataset.id;
+    if (expandedIds.has(id)) expandedIds.delete(id);
+    else expandedIds.add(id);
+    render();
+    return;
+  }
+});
+
+// ---- Tailor modal ----
+const tailorModal = document.getElementById("tailorModal");
+const tailorBody = document.getElementById("tailorBody");
+const tailorTitleEl = document.getElementById("tailorTitle");
+
+function closeTailor() { tailorModal.classList.remove("show"); }
+document.getElementById("tailorClose").addEventListener("click", closeTailor);
+document.getElementById("tailorCloseBtn").addEventListener("click", closeTailor);
+tailorModal.addEventListener("click", (e) => { if (e.target === tailorModal) closeTailor(); });
+
+function renderMarkdownLite(md) {
+  // Minimal markdown -> HTML (headings, lists, bold, code)
+  const lines = md.split("\n");
+  const out = [];
+  let inList = false;
+  for (let line of lines) {
+    if (/^##\s+/.test(line)) {
+      if (inList) { out.push("</ul>"); inList = false; }
+      out.push("<h2>" + escapeHtml(line.replace(/^##\s+/, "")) + "</h2>");
+    } else if (/^###\s+/.test(line)) {
+      if (inList) { out.push("</ul>"); inList = false; }
+      out.push("<h3>" + escapeHtml(line.replace(/^###\s+/, "")) + "</h3>");
+    } else if (/^\s*[-*]\s+/.test(line)) {
+      if (!inList) { out.push("<ul>"); inList = true; }
+      out.push("<li>" + inlineMd(line.replace(/^\s*[-*]\s+/, "")) + "</li>");
+    } else if (/^\s*\d+\.\s+/.test(line)) {
+      if (!inList) { out.push("<ul>"); inList = true; }
+      out.push("<li>" + inlineMd(line.replace(/^\s*\d+\.\s+/, "")) + "</li>");
+    } else if (line.trim() === "") {
+      if (inList) { out.push("</ul>"); inList = false; }
+      out.push("");
+    } else {
+      if (inList) { out.push("</ul>"); inList = false; }
+      out.push("<p>" + inlineMd(line) + "</p>");
+    }
+  }
+  if (inList) out.push("</ul>");
+  return out.join("\n");
+}
+function inlineMd(s) {
+  let t = escapeHtml(s);
+  t = t.replace(/`([^`]+)`/g, "<code>$1</code>");
+  t = t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  t = t.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  return t;
+}
+
+// ---- Editable tailoring state ----
+let tailorState = {
+  jobId: null,
+  job: null,
+  view: null,           // raw response from /api/tailor (full pools)
+  edits: null,          // user-editable composition
+  currentVariant: "metrics",
+};
+
+async function openTailorModal(jobId) {
+  tailorState.jobId = jobId;
+  tailorState.currentVariant = "metrics";
+  tailorBody.innerHTML = "<p>Ranking bullets locally…</p>";
+  document.getElementById("tailorRenderResults").style.display = "none";
+  tailorTitleEl.textContent = "Tailor resume";
+  tailorModal.classList.add("show");
+  await loadTailorVariant(jobId, "metrics", { quiet: true });
+}
+
+async function loadTailorVariant(jobId, variantKey, opts) {
+  opts = opts || {};
+  if (!opts.quiet) tailorBody.innerHTML = "<p>Re-ranking for " + escapeHtml(variantKey) + "…</p>";
+  try {
+    const res = await fetch("/api/tailor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ job_id: jobId, variant: variantKey }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      tailorBody.innerHTML = "<p style='color:#c0392b'><strong>Error:</strong> " + escapeHtml(data.error) + "</p>";
+      return;
+    }
+    tailorState.job = data.job;
+    tailorState.view = data.view;
+    tailorState.currentVariant = variantKey;
+    tailorState.edits = editsFromView(data.view);
+    if (data.job) {
+      tailorTitleEl.textContent = "Tailor for: " + (data.job.title || "") + " — " + (data.job.company || "");
+    }
+    renderTailorBody();
+  } catch (e) {
+    tailorBody.innerHTML = "<p style='color:#c0392b'>Network error: " + escapeHtml(e.message) + "</p>";
+  }
+}
+
+function editsFromView(view) {
+  return {
+    profile: view.profile,
+    profile_label: view.profile_label,
+    summary_id: (view.summary.picked[0] && view.summary.picked[0].id) || null,
+    skill_ids: view.skills.picked.map(b => b.id),
+    roles: view.roles.map(r => ({
+      key: r.key,
+      position: r.position,
+      company: r.company,
+      start_date: r.start_date,
+      end_date: r.end_date,
+      location: r.location,
+      highlight_ids: r.highlights_picked.map(b => b.id),
+    })),
+  };
+}
+
+function findRoleInView(roleKey) {
+  return tailorState.view.roles.find(r => r.key === roleKey);
+}
+function findRoleInEdits(roleKey) {
+  return tailorState.edits.roles.find(r => r.key === roleKey);
+}
+
+function renderTailorBody() {
+  const view = tailorState.view;
+  const edits = tailorState.edits;
+  if (!view || !edits) return;
+  const summaryPool = view.summary.picked.concat(view.summary.unpicked);
+  const summaryCurrent = summaryPool.find(b => b.id === edits.summary_id);
+  const skillsPickedIds = new Set(edits.skill_ids);
+  const skillsAll = view.skills.picked.concat(view.skills.unpicked);
+  const skillsPicked = edits.skill_ids
+    .map(id => skillsAll.find(b => b.id === id))
+    .filter(Boolean);
+  const skillsUnpicked = skillsAll.filter(b => !skillsPickedIds.has(b.id));
+
+  const banner = `
+    <div class="ed-banner">
+      <div>
+        <strong>Detected profile:</strong> ${escapeHtml(view.profile_label)}
+        ${view.runner_up_profile ? `<span style="color:#888">· runner-up: ${escapeHtml(view.runner_up_profile)}</span>` : ""}
+      </div>
+      <div class="variant-tabs">
+        ${view.available_variants.map(v =>
+          `<button data-variant="${escapeHtml(v.key)}" class="${tailorState.currentVariant === v.key ? "active" : ""}">${escapeHtml(v.label)}</button>`
+        ).join("")}
+      </div>
+    </div>
+    <div style="font-size:12px;color:#666;margin-bottom:10px">
+      Click a variant tab to re-rank. <strong style="color:#c0392b">Re-ranking discards your manual edits.</strong>
+      Use the × buttons to remove items and the + Add menus to bring unused candidates back in.
+      The three "Render" buttons at the bottom each save a PDF labeled with that variant tag.
+    </div>
+  `;
+
+  // Summary section
+  const summaryHtml = `
+    <div class="ed-section">
+      <h3>Summary</h3>
+      <div class="ed-summary-card ${summaryCurrent ? "" : "empty"}">
+        <div class="text">${summaryCurrent ? escapeHtml(summaryCurrent.text) : "No summary picked. Choose one →"}</div>
+        ${summaryPool.length > 1 ? `
+          <select data-action="set-summary">
+            <option value="">— pick summary —</option>
+            ${summaryPool.map(b =>
+              `<option value="${escapeHtml(b.id)}" ${b.id === edits.summary_id ? "selected" : ""}>
+                ${escapeHtml(b.text.slice(0, 80))}${b.text.length > 80 ? "…" : ""}
+              </option>`
+            ).join("")}
+          </select>` : ""}
+      </div>
+    </div>
+  `;
+
+  // Skills section
+  const skillsHtml = `
+    <div class="ed-section">
+      <h3>Core Competencies (${skillsPicked.length})</h3>
+      ${skillsPicked.map(b => `
+        <div class="ed-bullet">
+          <div class="text">${escapeHtml(b.text)}</div>
+          <button data-action="remove-skill" data-id="${escapeHtml(b.id)}" title="Remove">×</button>
+        </div>`).join("") || "<p style='font-size:12px;color:#888;font-style:italic'>No skills picked.</p>"}
+      ${skillsUnpicked.length ? `
+        <div class="ed-add">
+          <select data-add-target="skill">
+            <option value="">+ Add skill candidate…</option>
+            ${skillsUnpicked.map(b =>
+              `<option value="${escapeHtml(b.id)}">${escapeHtml(b.text.slice(0, 100))}${b.text.length > 100 ? "…" : ""}</option>`
+            ).join("")}
+          </select>
+          <button data-action="add-skill">Add</button>
+        </div>` : ""}
+    </div>
+  `;
+
+  // Roles section
+  const rolesHtml = view.roles.map(roleView => {
+    const roleEdit = findRoleInEdits(roleView.key);
+    const removed = !roleEdit;
+    const allHighlights = roleView.highlights_picked.concat(roleView.highlights_unpicked);
+    const pickedIds = new Set(roleEdit ? roleEdit.highlight_ids : []);
+    const pickedBullets = roleEdit
+      ? roleEdit.highlight_ids.map(id => allHighlights.find(b => b.id === id)).filter(Boolean)
+      : [];
+    const unpickedBullets = allHighlights.filter(b => !pickedIds.has(b.id));
+    return `
+      <div class="ed-role ${removed ? "removed" : ""}">
+        <div class="ed-role-head">
+          <div class="title">
+            ${escapeHtml(roleView.position)}
+            <span class="meta">— ${escapeHtml(roleView.company)} · ${escapeHtml(roleView.start_date)} – ${escapeHtml(roleView.end_date)}</span>
+          </div>
+          ${removed
+            ? `<button data-action="restore-role" data-role="${escapeHtml(roleView.key)}">Restore role</button>`
+            : `<button class="danger" data-action="remove-role" data-role="${escapeHtml(roleView.key)}">Drop role</button>`}
+        </div>
+        ${removed ? "" : pickedBullets.map(b => `
+          <div class="ed-bullet">
+            <div class="text">${escapeHtml(b.text)}</div>
+            <button data-action="remove-highlight" data-role="${escapeHtml(roleView.key)}" data-id="${escapeHtml(b.id)}" title="Remove bullet">×</button>
+          </div>`).join("")}
+        ${(!removed && unpickedBullets.length) ? `
+          <div class="ed-add">
+            <select data-add-target="highlight" data-role="${escapeHtml(roleView.key)}">
+              <option value="">+ Add bullet from this role's pool…</option>
+              ${unpickedBullets.map(b =>
+                `<option value="${escapeHtml(b.id)}">${escapeHtml(b.text.slice(0, 100))}${b.text.length > 100 ? "…" : ""}</option>`
+              ).join("")}
+            </select>
+            <button data-action="add-highlight" data-role="${escapeHtml(roleView.key)}">Add</button>
+          </div>` : ""}
+      </div>
+    `;
+  }).join("");
+
+  tailorBody.innerHTML = banner +
+    summaryHtml +
+    skillsHtml +
+    `<div class="ed-section"><h3>Experience</h3>${rolesHtml}</div>`;
+
+  // Wire up event handlers (delegated via tailorBody)
+}
+
+// ---- Delegated event handlers for the editable modal ----
+tailorBody.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-action]");
+  const variantTab = e.target.closest(".ed-banner .variant-tabs button");
+  if (variantTab) {
+    const v = variantTab.dataset.variant;
+    if (!v || v === tailorState.currentVariant) return;
+    if (!confirm("Re-ranking for '" + v + "' will discard your current edits. Continue?")) return;
+    loadTailorVariant(tailorState.jobId, v);
+    return;
+  }
+  if (!t) return;
+  const action = t.dataset.action;
+  const edits = tailorState.edits;
+  if (!edits) return;
+  if (action === "remove-skill") {
+    edits.skill_ids = edits.skill_ids.filter(id => id !== t.dataset.id);
+    renderTailorBody();
+  } else if (action === "add-skill") {
+    const sel = tailorBody.querySelector('select[data-add-target="skill"]');
+    if (!sel || !sel.value) return;
+    if (!edits.skill_ids.includes(sel.value)) edits.skill_ids.push(sel.value);
+    renderTailorBody();
+  } else if (action === "remove-highlight") {
+    const role = findRoleInEdits(t.dataset.role);
+    if (!role) return;
+    role.highlight_ids = role.highlight_ids.filter(id => id !== t.dataset.id);
+    renderTailorBody();
+  } else if (action === "add-highlight") {
+    const role = findRoleInEdits(t.dataset.role);
+    const sel = tailorBody.querySelector(`select[data-add-target="highlight"][data-role="${t.dataset.role}"]`);
+    if (!role || !sel || !sel.value) return;
+    if (!role.highlight_ids.includes(sel.value)) role.highlight_ids.push(sel.value);
+    renderTailorBody();
+  } else if (action === "remove-role") {
+    edits.roles = edits.roles.filter(r => r.key !== t.dataset.role);
+    renderTailorBody();
+  } else if (action === "restore-role") {
+    const roleView = findRoleInView(t.dataset.role);
+    if (!roleView) return;
+    edits.roles.push({
+      key: roleView.key,
+      position: roleView.position,
+      company: roleView.company,
+      start_date: roleView.start_date,
+      end_date: roleView.end_date,
+      location: roleView.location,
+      highlight_ids: roleView.highlights_picked.map(b => b.id),
+    });
+    // Keep canonical order (most recent first) by matching against view order
+    const orderKeys = tailorState.view.roles.map(r => r.key);
+    edits.roles.sort((a, b) => orderKeys.indexOf(a.key) - orderKeys.indexOf(b.key));
+    renderTailorBody();
+  }
+});
+
+tailorBody.addEventListener("change", (e) => {
+  const action = e.target.dataset.action;
+  if (action === "set-summary") {
+    tailorState.edits.summary_id = e.target.value || null;
+    renderTailorBody();
+  }
+});
+
+document.querySelectorAll(".variant-render-btn").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    if (!tailorState.edits) return showToast("No composition loaded", true);
+    const variant = btn.dataset.variant;
+    const allBtns = document.querySelectorAll(".variant-render-btn");
+    allBtns.forEach(b => b.disabled = true);
+    const originalText = btn.textContent;
+    btn.textContent = "Rendering…";
+    const resBox = document.getElementById("tailorRenderResults");
+    resBox.style.display = "block";
+    try {
+      const res = await fetch("/api/tailor_pdf_from_edits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company: tailorState.job ? tailorState.job.company : "",
+          title: tailorState.job ? tailorState.job.title : "",
+          variant: variant,
+          edits: tailorState.edits,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        resBox.innerHTML += `<div class="err">[${escapeHtml(variant)}] error: ${escapeHtml(data.error)}</div>`;
+      } else {
+        resBox.innerHTML += `<div>[${escapeHtml(variant)}] <a href="${escapeHtml(data.url)}" target="_blank">${escapeHtml(data.filename)}</a> · ${(data.size_bytes/1024).toFixed(0)} KB</div>`;
+      }
+    } catch (e) {
+      resBox.innerHTML += `<div class="err">[${escapeHtml(variant)}] network error: ${escapeHtml(e.message)}</div>`;
+    } finally {
+      allBtns.forEach(b => b.disabled = false);
+      btn.textContent = originalText;
+    }
+  });
+});
+
+// ---- Stop server ----
+document.getElementById("btnStopServer").addEventListener("click", async () => {
+  if (!confirm("Stop the local server? You'll need to restart it from Terminal or by double-clicking start_server.command.")) return;
+  try {
+    await fetch("/api/shutdown", { method: "POST" });
+    document.body.innerHTML = '<div style="padding:60px;text-align:center;font-family:sans-serif"><h2>Server stopped.</h2><p>Restart it by running <code>python3 server.py</code> or double-clicking <code>start_server.command</code>, then reload this page.</p></div>';
+  } catch (e) {
+    showToast("Already stopped or unreachable", true);
+  }
+});
+
+["minScore", "verdictFilter", "locFilter", "titleFilter", "hideSeen"].forEach(id =>
+  document.getElementById(id).addEventListener("input", render)
+);
+
+document.getElementById("resetSeen").addEventListener("click", () => {
+  if (confirm("Clear all 'already seen' marks? This affects only this dashboard.")) {
+    seen = new Set();
+    saveSeen(seen);
+    render();
+  }
+});
+
+document.getElementById("exportCsv").addEventListener("click", () => {
+  const { filtered } = applyFilters();
+  const headers = ["Fit", "Verdict", "Title", "Company", "Location", "Posted", "WorkType", "WhyFit", "LinkedInUrl"];
+  const csvLines = [headers.join(",")];
+  for (const j of filtered) {
+    const row = [
+      j.fit_score, j.verdict,
+      `"${(j.title || "").replace(/"/g, '""')}"`,
+      `"${(j.companyName || "").replace(/"/g, '""')}"`,
+      `"${(j.location || "").replace(/"/g, '""')}"`,
+      j.publishedAt || "",
+      `"${(j.workType || "").replace(/"/g, '""')}"`,
+      `"${(j.fit_reasoning || "").replace(/"/g, '""')}"`,
+      `"${j.jobUrl || ""}"`
+    ];
+    csvLines.push(row.join(","));
+  }
+  const blob = new Blob(["﻿" + csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `fitting_jobs_${(DATA.scored_at_utc || "now").replace(/[:T-]/g, "")}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById("btnReload").addEventListener("click", loadData);
+
+async function runTask(kind, button, logBox, body) {
+  body = body || {};
+  button.disabled = true;
+  const originalLabel = button.textContent;
+  button.innerHTML = '<span class="spinner"></span>Running...';
+  logBox.classList.add("active");
+  logBox.classList.remove("error");
+  logBox.textContent = "Starting " + kind + "...\n";
+  try {
+    const res = await fetch("/api/" + kind, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const startData = await res.json();
+    const taskId = startData.task_id;
+    if (!taskId) throw new Error("No task_id returned");
+    while (true) {
+      await new Promise(r => setTimeout(r, 1500));
+      const tr = await fetch("/api/task/" + taskId, { cache: "no-store" });
+      const tdata = await tr.json();
+      logBox.textContent = tdata.log || "";
+      logBox.scrollTop = logBox.scrollHeight;
+      if (tdata.status === "done" || tdata.status === "error") {
+        if (tdata.status === "error") logBox.classList.add("error");
+        break;
+      }
+    }
+    await loadData();
+    return !logBox.classList.contains("error");
+  } catch (e) {
+    logBox.textContent += "\n[client error] " + e.message;
+    logBox.classList.add("error");
+    return false;
+  } finally {
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+
+document.getElementById("btnScrape").addEventListener("click", async () => {
+  const resultsWanted = parseInt(document.getElementById("resultsWanted").value, 10);
+  const hoursOld = parseInt(document.getElementById("hoursOld").value, 10);
+  const ok = await runTask("scrape", document.getElementById("btnScrape"), document.getElementById("scrapeLog"), {
+    results_wanted: resultsWanted,
+    hours_old: hoursOld,
+  });
+  if (ok) {
+    await runTask("score", document.getElementById("btnScore"), document.getElementById("scoreLog"));
+  }
+});
+
+document.getElementById("btnScore").addEventListener("click", () => {
+  runTask("score", document.getElementById("btnScore"), document.getElementById("scoreLog"));
+});
+
+document.getElementById("btnScoreV2").addEventListener("click", () => {
+  runTask("score_v2", document.getElementById("btnScoreV2"), document.getElementById("scoreLog"));
+});
+
+function showToast(msg, isError) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.toggle("error", !!isError);
+  t.classList.add("show");
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.classList.remove("show"), 2400);
+}
+
+function linesToArray(text) {
+  return text.split("\n").map(s => s.trim()).filter(Boolean);
+}
+
+function arrayToLines(arr) {
+  return (arr || []).join("\n");
+}
+
+function updatePlanSummary() {
+  const terms = linesToArray(document.getElementById("cfgTerms").value).length;
+  const locs = linesToArray(document.getElementById("cfgLocations").value).length;
+  const sites = document.querySelectorAll(".cfgSite:checked").length;
+  const total = terms * locs * sites;
+  const summary = `${terms} terms x ${locs} countries x ${sites} sites = ${total} searches`;
+  document.getElementById("planSummary").textContent = summary;
+  document.getElementById("cfgPlan").textContent = summary;
+}
+
+async function loadConfig() {
+  try {
+    const cfg = await (await fetch("/api/config")).json();
+    if (cfg.results_wanted) document.getElementById("resultsWanted").value = cfg.results_wanted;
+    if (cfg.hours_old) document.getElementById("hoursOld").value = cfg.hours_old;
+    document.getElementById("cfgTerms").value = arrayToLines(cfg.search_terms);
+    document.getElementById("cfgLocations").value = arrayToLines(cfg.locations);
+    document.getElementById("cfgIgnore").value = arrayToLines(cfg.ignore_companies);
+    const sitesSet = new Set(cfg.sites || []);
+    document.querySelectorAll(".cfgSite").forEach(cb => {
+      cb.checked = sitesSet.has(cb.value);
+    });
+    updatePlanSummary();
+  } catch (e) {
+    console.error("Failed to load config:", e);
+  }
+}
+
+async function saveConfig() {
+  const sites = Array.from(document.querySelectorAll(".cfgSite:checked")).map(cb => cb.value);
+  const payload = {
+    search_terms: linesToArray(document.getElementById("cfgTerms").value),
+    locations: linesToArray(document.getElementById("cfgLocations").value),
+    sites: sites,
+    ignore_companies: linesToArray(document.getElementById("cfgIgnore").value),
+  };
+  if (payload.search_terms.length === 0) return showToast("Need at least one search term", true);
+  if (payload.locations.length === 0) return showToast("Need at least one country", true);
+  if (sites.length === 0) return showToast("Pick at least one site", true);
+  try {
+    const res = await fetch("/api/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.status === "ok") showToast("Configuration saved");
+    else showToast("Save failed: " + (data.error || "unknown"), true);
+    updatePlanSummary();
+  } catch (e) {
+    showToast("Network error: " + e.message, true);
+  }
+}
+
+document.getElementById("btnSaveConfig").addEventListener("click", saveConfig);
+document.getElementById("btnReloadConfig").addEventListener("click", loadConfig);
+document.getElementById("cfgTerms").addEventListener("input", updatePlanSummary);
+document.getElementById("cfgLocations").addEventListener("input", updatePlanSummary);
+document.querySelectorAll(".cfgSite").forEach(cb => cb.addEventListener("change", updatePlanSummary));
+
+(async () => {
+  await loadConfig();
+  await loadData();
+})();
+</script>
+</body>
+</html>

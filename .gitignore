@@ -1,0 +1,33 @@
+# Secrets
+.env
+*.env.local
+
+# Output / generated data
+results/
+*.xlsx
+*.csv
+
+# Personal source catalog (verbatim resume bullets)
+source_catalog.txt
+corpus/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log

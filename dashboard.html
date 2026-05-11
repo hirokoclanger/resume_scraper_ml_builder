@@ -733,6 +733,7 @@ function editsFromView(view) {
   return {
     profile: view.profile,
     profile_label: view.profile_label,
+    header_key: view.default_header_key || "germany",
     summary_id: (view.summary.picked[0] && view.summary.picked[0].id) || null,
     skill_ids: view.skills.picked.map(b => b.id),
     roles: view.roles.map(r => ({
@@ -767,6 +768,8 @@ function renderTailorBody() {
     .filter(Boolean);
   const skillsUnpicked = skillsAll.filter(b => !skillsPickedIds.has(b.id));
 
+  const headerKeys = Object.keys(view.header_variants || {});
+  const activeHeader = (view.header_variants && view.header_variants[edits.header_key]) || view.header;
   const banner = `
     <div class="ed-banner">
       <div>
@@ -779,10 +782,26 @@ function renderTailorBody() {
         ).join("")}
       </div>
     </div>
+    ${headerKeys.length ? `
+    <div class="ed-banner" style="background:#f5f9f4;border-color:#cfe0c8">
+      <div style="flex:1;min-width:0">
+        <strong>Header variant:</strong>
+        <select data-action="set-header" style="font-size:12px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;margin-left:6px">
+          ${headerKeys.map(k =>
+            `<option value="${escapeHtml(k)}" ${k === edits.header_key ? "selected" : ""}>${escapeHtml(k)}</option>`
+          ).join("")}
+        </select>
+        <div style="font-size:11px;color:#555;margin-top:4px">
+          ${escapeHtml(activeHeader.headline || "")}<br>
+          ${escapeHtml(activeHeader.location || "")}<br>
+          <span style="color:#777">${escapeHtml(activeHeader.email || "")} · ${escapeHtml(activeHeader.phone || "")}</span>
+        </div>
+      </div>
+    </div>` : ""}
     <div style="font-size:12px;color:#666;margin-bottom:10px">
-      Click a variant tab to re-rank. <strong style="color:#c0392b">Re-ranking discards your manual edits.</strong>
-      Use the × buttons to remove items and the + Add menus to bring unused candidates back in.
-      The three "Render" buttons at the bottom each save a PDF labeled with that variant tag.
+      Pick a header variant (location / work-rights line) and use the + Add / × buttons below to refine bullets.
+      Variant tabs re-rank from scratch and <strong style="color:#c0392b">discard your manual edits</strong>.
+      The three "Render" buttons at the bottom save a PDF labelled with the chosen variant.
     </div>
   `;
 
@@ -935,6 +954,9 @@ tailorBody.addEventListener("change", (e) => {
   const action = e.target.dataset.action;
   if (action === "set-summary") {
     tailorState.edits.summary_id = e.target.value || null;
+    renderTailorBody();
+  } else if (action === "set-header") {
+    tailorState.edits.header_key = e.target.value || "germany";
     renderTailorBody();
   }
 });

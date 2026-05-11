@@ -74,13 +74,22 @@ def build_rendercv_yaml(tailored: dict) -> dict:
     """Construct a v2 RenderCV YAML dict from the tailored structure."""
     h = tailored["header"]
 
-    # Headline becomes the tagline under the name. The "location" field on the
-    # CV is one line below the name; we use the address line for it.
+    # RenderCV's `phone` field is strict E.164 single-value. When the header
+    # has more than one phone (e.g. the Taiwan variant carries both VN and DE
+    # numbers), the primary goes into cv.phone and extras get appended to the
+    # location line — that's where multi-phone resumes typically display them
+    # in print anyway, and avoids fighting RenderCV's HttpUrl-required
+    # custom_connections schema.
+    primary_phone, extra_phones = _split_phones(h.get("phone", ""))
+    location = (h.get("location", "") or "").strip()
+    if extra_phones:
+        suffix = "  ·  " + "  ·  ".join(extra_phones)
+        location = (location + suffix) if location else suffix.lstrip(" ·")
     cv = {
         "name": h.get("name", "Philipp Eiselt"),
-        "location": h.get("location", "") or None,
+        "location": location or None,
         "email": h.get("email", "") or None,
-        "phone": h.get("phone", "") or None,
+        "phone": primary_phone or None,
         "website": _normalise_url(h.get("website", "")),
         "social_networks": _social_networks(h),
         "sections": {},
@@ -150,6 +159,12 @@ def build_rendercv_yaml(tailored: dict) -> dict:
                 "bottom_margin": "0.7in",
                 "left_margin": "0.7in",
                 "right_margin": "0.7in",
+                "show_top_note": False,
+            },
+            "header": {
+                "connections": {
+                    "phone_number_format": "international",
+                },
             },
         },
         "locale": {"language": "english"},
@@ -158,6 +173,19 @@ def build_rendercv_yaml(tailored: dict) -> dict:
             "pdf_title": f"{h.get('name', 'CV')} - CV",
         },
     }
+
+
+def _split_phones(text: str) -> tuple[str | None, list[str]]:
+    """Split a phone string that may contain multiple numbers (separated by ` · `
+    or `|`) into (primary, [extras]). Each returned phone is whitespace-collapsed."""
+    if not text:
+        return None, []
+    parts = [p.strip() for p in re.split(r"\s+·\s+|\s+\|\s+|\s+/\s+", text) if p.strip()]
+    if not parts:
+        return None, []
+    primary = re.sub(r"\s+", " ", parts[0])
+    extras = [re.sub(r"\s+", " ", p) for p in parts[1:]]
+    return primary, extras
 
 
 def _normalise_url(text: str) -> str | None:

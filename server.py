@@ -184,17 +184,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "view": view,
         })
 
-    def _produce_pdfs(self, jd_text, company, title):
+    def _produce_pdfs(self, jd_text, company, title, header_key=None):
         """Render every variant and return a list of {variant, profile, name, url}."""
         if not jd_text or len(jd_text.strip()) < 20:
             raise ValueError("JD text too short — need at least a paragraph of role description.")
         corpus, cfg = self._ensure_corpus()
+        header_variants = corpus.get("header_variants", {})
+        if header_key and header_key not in header_variants:
+            raise ValueError(f"unknown header variant '{header_key}'")
+        chosen_header = header_variants.get(header_key) if header_key else None
         company_slug = slugify(company or "Unknown")
         title_slug = slugify(title or "Role")
         results = []
         for v in cfg["variants"]:
             variant = build_variant(jd_text, corpus, cfg, v["key"])
+            if chosen_header:
+                variant["header"] = chosen_header
             stem = f"Eiselt__{company_slug}__{title_slug}__{v['key']}"
+            if header_key:
+                stem = f"Eiselt__{company_slug}__{title_slug}__{header_key}__{v['key']}"
             pdf = render_pdf(variant, TAILORED_DIR, stem)
             results.append({
                 "variant": v["key"],
@@ -304,7 +312,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         composition = composition_from_edits(edits)
         company_slug = slugify(company)
         title_slug = slugify(title)
-        stem = f"Eiselt__{company_slug}__{title_slug}__{variant_key}"
+        header_key = edits.get("header_key") or ""
+        if header_key:
+            stem = f"Eiselt__{company_slug}__{title_slug}__{header_key}__{variant_key}"
+        else:
+            stem = f"Eiselt__{company_slug}__{title_slug}__{variant_key}"
         try:
             pdf = render_pdf(composition, TAILORED_DIR, stem)
         except Exception as e:
@@ -323,11 +335,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         jd_text = body.get("jd_text", "") or body.get("description", "")
         company = (body.get("company", "") or "Unknown").strip()
         title = (body.get("title", "") or "Role").strip()
+        header_key = (body.get("header_key", "") or "").strip() or None
         if not jd_text:
             self._send_json({"error": "jd_text required"}, status=400)
             return
         try:
-            results = self._produce_pdfs(jd_text=jd_text, company=company, title=title)
+            results = self._produce_pdfs(jd_text=jd_text, company=company, title=title, header_key=header_key)
         except RuntimeError as e:
             self._send_json({"error": str(e)}, status=500)
             return
@@ -340,6 +353,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._send_json({
             "status": "ok",
             "job": {"title": title, "company": company, "location": ""},
+            "header_key": header_key,
             "pdfs": results,
         })
 
@@ -397,6 +411,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif path.startswith("/api/tailored/"):
             filename = path[len("/api/tailored/"):]
             self._serve_tailored_pdf(filename)
+        elif path == "/api/header_variants":
+            try:
+                corpus, _ = self._ensure_corpus()
+            except RuntimeError as e:
+                self._send_json({"error": str(e)}, status=500)
+                return
+            self._send_json({
+                "default": corpus.get("default_header_key", "germany"),
+                "variants": corpus.get("header_variants", {}),
+            })
         elif path == "/api/tailored":
             # List previously generated PDFs.
             if not TAILORED_DIR.exists():

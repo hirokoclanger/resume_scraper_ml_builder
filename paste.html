@@ -92,7 +92,16 @@
           <input type="text" id="title" placeholder="Senior IT Portfolio Manager">
         </div>
       </div>
-      <div class="hint">These become part of the PDF filename: <code>Eiselt__{Company}__{Title}__{variant}.pdf</code></div>
+      <div class="row" style="margin-top:8px">
+        <div style="flex:1">
+          <label for="headerKey">Header variant</label>
+          <select id="headerKey" style="width:100%;padding:8px 10px;border:1px solid #d0d0d0;border-radius:4px;font-size:14px;font-family:inherit">
+            <option value="">— loading —</option>
+          </select>
+          <div class="hint" id="headerHint"></div>
+        </div>
+      </div>
+      <div class="hint">PDF filename: <code>Eiselt__{Company}__{Title}__{header}__{variant}.pdf</code> when a header variant is picked.</div>
 
       <label for="jdText" style="margin-top:14px">Job description</label>
       <textarea id="jdText" placeholder="Paste the full job description here. The engine matches bullets against keywords like portfolio, governance, ServiceNow, transformation, steering, RAID, etc."></textarea>
@@ -180,8 +189,40 @@ const titleEl = document.getElementById("title");
 const previewEl = document.getElementById("preview");
 const statusEl = document.getElementById("status");
 const resultEl = document.getElementById("result");
+const headerKeyEl = document.getElementById("headerKey");
+const headerHintEl = document.getElementById("headerHint");
 
 let currentVariant = "metrics";
+let headerVariants = {};
+
+async function loadHeaderVariants() {
+  try {
+    const res = await fetch("/api/header_variants");
+    const data = await res.json();
+    headerVariants = data.variants || {};
+    const keys = Object.keys(headerVariants);
+    if (!keys.length) {
+      headerKeyEl.innerHTML = '<option value="">(none — define in master.md)</option>';
+      return;
+    }
+    const defaultKey = data.default || keys[0];
+    headerKeyEl.innerHTML = keys.map(k =>
+      `<option value="${escapeHtml(k)}" ${k === defaultKey ? "selected" : ""}>${escapeHtml(k)}</option>`
+    ).join("");
+    updateHeaderHint();
+  } catch (e) {
+    headerKeyEl.innerHTML = '<option value="">(could not load)</option>';
+  }
+}
+function updateHeaderHint() {
+  const k = headerKeyEl.value;
+  const h = headerVariants[k];
+  if (!h) { headerHintEl.textContent = ""; return; }
+  headerHintEl.innerHTML = `<strong>${escapeHtml(h.headline || "")}</strong><br>` +
+    `<span style="color:#666">${escapeHtml(h.location || "")}</span>`;
+}
+headerKeyEl.addEventListener("change", updateHeaderHint);
+loadHeaderVariants();
 
 jdEl.addEventListener("input", () => {
   jdHint.textContent = `${jdEl.value.length} chars`;
@@ -239,7 +280,7 @@ document.getElementById("btnGenerate").addEventListener("click", async () => {
     const res = await fetch("/api/tailor_pdf_freeform", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jd_text: jd, company, title }),
+      body: JSON.stringify({ jd_text: jd, company, title, header_key: headerKeyEl.value || "" }),
     });
     const data = await res.json();
     if (data.error) {

@@ -59,6 +59,16 @@ SECTION_NAMES = {
 # matches occur across the 5 roles.
 CANONICAL_ROLES = [
     {
+        "key": "aixxen_solo_2026",
+        "position": "Solo Founder — AIXXEN (AI portfolio cockpit)",
+        "company": "AIXXEN",
+        "start_date": "2026-02",
+        "end_date": "present",
+        "location": "Solo, remote",
+        "match_keywords": ["aixxen", "solo founder"],
+        "master_only": True,
+    },
+    {
         "key": "icelt_2026",
         "position": "Independent IT Project, Governance & Transformation Consultant",
         "company": "ICELT",
@@ -67,16 +77,6 @@ CANONICAL_ROLES = [
         "location": "Ho Chi Minh City, Vietnam",
         "match_keywords": ["consultant", "icelt", "independent it"],
         # Reject docx variants — the old freelance bullets are inaccurate now.
-        "master_only": True,
-    },
-    {
-        "key": "aixxen_solo_2026",
-        "position": "Founder / Developer — AIXXEN (solo build)",
-        "company": "AIXXEN",
-        "start_date": "2026-02",
-        "end_date": "present",
-        "location": "Solo, remote",
-        "match_keywords": ["aixxen", "founder / developer", "founder/developer"],
         "master_only": True,
     },
     {
@@ -205,6 +205,8 @@ def parse_master_md(path: Path) -> dict:
             "website": "",
             "linkedin": "",
         },
+        "header_variants": {},   # key -> header dict; filled by parse step below
+        "default_header_key": "germany",
         "summary_pool": [],
         "skills_pool": [],
         "roles": [
@@ -274,6 +276,46 @@ def parse_master_md(path: Path) -> dict:
         return None
 
     # Body walk.
+    current_header_key: Optional[str] = None
+    header_buf: list[str] = []
+
+    def flush_header_buf():
+        """Commit the accumulated 3-line header variant into corpus."""
+        nonlocal header_buf, current_header_key
+        if not current_header_key or not header_buf:
+            header_buf = []
+            return
+        # Lines: 0=headline, 1=location/rights, 2=contacts (· separated)
+        headline = header_buf[0] if len(header_buf) > 0 else ""
+        location = header_buf[1] if len(header_buf) > 1 else ""
+        contacts_raw = header_buf[2] if len(header_buf) > 2 else ""
+        h = {
+            "name": "Philipp Eiselt",
+            "headline": headline,
+            "location": location,
+            "email": "",
+            "phone": "",
+            "website": "",
+            "linkedin": "",
+        }
+        parts = [p.strip() for p in re.split(r"\s+·\s+|\s+\|\s+", contacts_raw)]
+        phones: list[str] = []
+        for part in parts:
+            low = part.lower()
+            if "@" in part and not h["email"]:
+                h["email"] = part
+            elif part.startswith("+") or (re.match(r"^\d", part) and any(ch.isdigit() for ch in part)):
+                # Multiple phones get joined with ' · ' so all show on the CV.
+                phones.append(part if part.startswith("+") else f"+{part}")
+            elif "linkedin" in low and not h["linkedin"]:
+                h["linkedin"] = part
+            elif (".net" in low or ".com" in low or ".app" in low or ".io" in low) and not h["website"]:
+                h["website"] = part
+        if phones:
+            h["phone"] = " · ".join(phones)
+        corpus["header_variants"][current_header_key] = h
+        header_buf = []
+
     for raw in lines:
         line = raw.rstrip()
         if not line.strip():
@@ -281,6 +323,9 @@ def parse_master_md(path: Path) -> dict:
         # Headings
         m = re.match(r"^(#{2,3})\s+(.*)$", line)
         if m:
+            # Closing any open header variant before changing sections.
+            if section == "header_variants":
+                flush_header_buf()
             level = len(m.group(1))
             txt = m.group(2).strip()
             low = re.sub(r"\s+", " ", txt.lower())
@@ -288,6 +333,9 @@ def parse_master_md(path: Path) -> dict:
                 if "core competenc" in low or low == "skills":
                     section = "skills"
                     current_role_key = None
+                elif "header variants" in low or low == "header":
+                    section = "header_variants"
+                    current_header_key = None
                 elif "summary" in low or "profile" in low:
                     section = "summary"
                     current_role_key = None
@@ -312,6 +360,10 @@ def parse_master_md(path: Path) -> dict:
             elif level == 3 and section == "experience":
                 idx = role_idx_for_header(txt)
                 current_role_key = CANONICAL_ROLES[idx]["key"] if idx is not None else None
+            elif level == 3 and section == "header_variants":
+                flush_header_buf()  # commit previous variant if any
+                current_header_key = re.sub(r"[^a-z0-9_]+", "", txt.lower()) or None
+                header_buf = []
             continue
 
         # Bullets ("- ..." or "* ...")
@@ -357,6 +409,12 @@ def parse_master_md(path: Path) -> dict:
         # education/languages paragraphs.
         text = normalise(line.strip())
         if not text:
+            continue
+        if section == "header_variants" and current_header_key:
+            # Skip the explanatory paragraph that appears before the first variant.
+            if not header_buf and (text.startswith("Each variant") or text.lower().startswith("format")):
+                continue
+            header_buf.append(text)
             continue
         if section == "summary":
             corpus["summary_pool"].append({
@@ -412,6 +470,20 @@ def parse_master_md(path: Path) -> dict:
                 "source": MASTER_NAME,
                 "tags": autotag(text),
             })
+
+    # Flush any trailing header variant that was left open at EOF / before a
+    # section we already detected.
+    if section == "header_variants":
+        flush_header_buf()
+
+    # Promote the chosen default header_variant to the top-level `header` for
+    # back-compat with existing rendering paths.
+    if corpus["header_variants"]:
+        default_key = corpus["default_header_key"]
+        if default_key not in corpus["header_variants"]:
+            default_key = next(iter(corpus["header_variants"]))
+            corpus["default_header_key"] = default_key
+        corpus["header"] = dict(corpus["header_variants"][default_key])
 
     return corpus
 

@@ -377,6 +377,8 @@ def build_editable_view(
         "variant_label": variant["variant_label"],
         "runner_up_profile": variant["trace"].get("runner_up"),
         "header": corpus["header"],
+        "header_variants": corpus.get("header_variants", {}),
+        "default_header_key": corpus.get("default_header_key", "germany"),
         "summary": {
             "picked": summary_picked,
             "unpicked": summary_unpicked,
@@ -455,7 +457,14 @@ def composition_from_edits(edits: dict) -> dict:
     certs = [b["text"] for b in corpus["certifications"] if b["source"].endswith(".md")]
     langs = [b["text"] for b in corpus["languages"] if b["source"].endswith(".md")]
 
-    header = edits.get("header") or corpus["header"]
+    # Header: client may send either a header_key referencing the corpus
+    # variants, or a full header dict, or nothing (falls back to the corpus
+    # default).
+    header = None
+    if edits.get("header_key"):
+        header = corpus.get("header_variants", {}).get(edits["header_key"])
+    if header is None:
+        header = edits.get("header") or corpus["header"]
     return {
         "profile": edits.get("profile", "custom"),
         "profile_label": edits.get("profile_label", "Custom edit"),

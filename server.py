@@ -277,6 +277,33 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "tailoring": build_brief(variant),
         })
 
+    def _handle_tailor_view_freeform(self, body):
+        """Structured editable view for a pasted JD (same shape as the
+        /api/tailor response used by the dashboard modal, but no job_id
+        required)."""
+        jd_text = body.get("jd_text", "")
+        company = (body.get("company", "") or "").strip()
+        title = (body.get("title", "") or "").strip()
+        variant_key = body.get("variant") or "metrics"
+        if not jd_text or len(jd_text.strip()) < 20:
+            self._send_json({"error": "jd_text required (at least a paragraph)"}, status=400)
+            return
+        try:
+            corpus, cfg = self._ensure_corpus()
+        except RuntimeError as e:
+            self._send_json({"error": str(e)}, status=500)
+            return
+        if not any(v["key"] == variant_key for v in cfg["variants"]):
+            self._send_json({"error": f"Unknown variant '{variant_key}'"}, status=400)
+            return
+        view = build_editable_view(jd_text, corpus, cfg, variant_key)
+        self._send_json({
+            "status": "ok",
+            "source": "local_retrieval",
+            "job": {"title": title, "company": company, "location": ""},
+            "view": view,
+        })
+
     def _handle_tailor_pdf_from_edits(self, body):
         """Render a PDF from a user-edited composition. Used by the editable
         modal. The variant name is just a filename label here — the engine
@@ -537,6 +564,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         elif path == "/api/tailor_preview":
             self._handle_tailor_preview(body)
+
+        elif path == "/api/tailor_view_freeform":
+            self._handle_tailor_view_freeform(body)
 
         elif path == "/api/rebuild_corpus":
             self._handle_rebuild_corpus()

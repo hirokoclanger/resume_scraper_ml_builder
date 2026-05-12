@@ -58,11 +58,15 @@ _yaml.indent(mapping=2, sequence=4, offset=2)
 
 
 def slugify(text: str, max_len: int = 60) -> str:
+    """Filesystem-safe label. Underscores survive intact so internal stable
+    keys like `it_governance_manager` round-trip through the renderer
+    cleanly (otherwise the batch path and the edit path produce different
+    filenames for the same cell)."""
     if not text:
         return "untitled"
     text = unicodedata.normalize("NFKD", text)
     text = text.encode("ascii", "ignore").decode("ascii")
-    text = re.sub(r"[^A-Za-z0-9]+", "-", text).strip("-")
+    text = re.sub(r"[^A-Za-z0-9_]+", "-", text).strip("-")
     return (text or "untitled")[:max_len]
 
 

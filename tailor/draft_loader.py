@@ -182,7 +182,20 @@ def load_draft(filename: str) -> dict:
     path = DRAFTS_DIR / filename
     if not path.exists():
         raise FileNotFoundError(f"draft not found: {path}")
-    text = _strip_keyword_block(path.read_text(encoding="utf-8"))
+    raw = path.read_text(encoding="utf-8")
+
+    # Per-draft directive: <!-- projects: aixxen, tourtour -->
+    # Lets a draft restrict its Personal Projects section to a subset of
+    # the master-sourced projects. Names matched case-insensitively
+    # against the corpus project name (the first word of each entry).
+    project_filter: set[str] | None = None
+    pm = re.search(r"<!--\s*projects:\s*([^-]+?)\s*-->", raw, re.IGNORECASE)
+    if pm:
+        wanted = [w.strip().lower() for w in pm.group(1).split(",") if w.strip()]
+        if wanted:
+            project_filter = set(wanted)
+
+    text = _strip_keyword_block(raw)
     sections = _section_split(text)
 
     headline = _parse_headline(sections.get("header", ""))
@@ -193,9 +206,12 @@ def load_draft(filename: str) -> dict:
     certifications = _parse_bullets(sections.get("certifications", ""))
     languages = _parse_lines(sections.get("languages", ""))
 
-    # Projects: drafts don't include the section by default. Pull from the
-    # master corpus so PDFs include them consistently.
+    # Projects: drafts don't include the section by default. Pull from
+    # the master corpus so PDFs include them consistently. When the draft
+    # has a `<!-- projects: ... -->` directive, filter to that subset.
     projects = _master_projects()
+    if project_filter is not None:
+        projects = [p for p in projects if p["name"].lower() in project_filter]
 
     return {
         "headline": headline,

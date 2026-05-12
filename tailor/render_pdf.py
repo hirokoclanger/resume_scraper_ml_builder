@@ -324,8 +324,14 @@ def render_pdf(tailored: dict, output_dir: Path, filename_stem: str, *, include_
             _yaml.dump(rcv_yaml, fh)
         out_folder = tmp / "out"
         out_folder.mkdir()
+        # Invoke rendercv via `python -m` so the call survives a project
+        # move: the .venv/bin/rendercv shim has a baked-in shebang
+        # pointing at the install-time python path, which breaks once
+        # the venv has been relocated. sys.executable here is whichever
+        # python loaded the server (the bootstrap already pinned it to
+        # the project's .venv).
         cmd = [
-            str(RENDERCV_BIN), "render", str(yaml_path),
+            sys.executable, "-m", "rendercv", "render", str(yaml_path),
             "--output-folder", str(out_folder),
             "--dont-generate-markdown",
             "--dont-generate-html",

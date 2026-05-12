@@ -54,6 +54,7 @@ SCORED_PATH = HERE / "results" / "jobs_scored.json"
 RAW_PATH = HERE / "results" / "jobs_raw.json"
 DASHBOARD_PATH = HERE / "dashboard.html"
 PASTE_PATH = HERE / "paste.html"
+LIBRARY_PATH = HERE / "library.html"
 CATALOG_PATH = HERE / "source_catalog.txt"
 ENV_PATH = HERE / ".env"
 CORPUS_PATH = HERE / "corpus" / "corpus.json"
@@ -300,6 +301,74 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "tailoring": build_brief(variant),
         })
 
+    def _handle_batch_generate(self, body):
+        """Produce a library of baseline PDFs: every role_target × every
+        selected header variant. The body may specify subsets to limit work:
+          {
+            "target_keys": ["it_governance_manager", ...],  # optional, default = all
+            "header_keys": ["germany", ...],                # optional, default = all
+          }
+        Each combination renders one PDF using the role_target's
+        configured profile + variant. Returns a list of {target, header,
+        filename, url, size_bytes, error?}.
+        """
+        try:
+            corpus, cfg = self._ensure_corpus()
+        except RuntimeError as e:
+            self._send_json({"error": str(e)}, status=500)
+            return
+        targets = cfg.get("role_targets", [])
+        if not targets:
+            self._send_json({"error": "No role_targets defined in profiles.json"}, status=400)
+            return
+        all_header_keys = list(corpus.get("header_variants", {}).keys())
+        if not all_header_keys:
+            self._send_json({"error": "No header variants defined in master.md"}, status=400)
+            return
+
+        wanted_targets = set(body.get("target_keys") or [t["key"] for t in targets])
+        wanted_headers = set(body.get("header_keys") or all_header_keys)
+        valid_variants = {v["key"] for v in cfg["variants"]}
+        company_label = (body.get("company") or "Library").strip()
+        company_slug = slugify(company_label)
+
+        results = []
+        for tgt in targets:
+            if tgt["key"] not in wanted_targets:
+                continue
+            variant_key = tgt.get("variant") or "leadership"
+            if variant_key not in valid_variants:
+                variant_key = next(iter(valid_variants))
+            for hk in all_header_keys:
+                if hk not in wanted_headers:
+                    continue
+                try:
+                    variant = build_variant(tgt["seed_jd"], corpus, cfg, variant_key)
+                    variant["header"] = corpus["header_variants"][hk]
+                    stem = f"Eiselt__{company_slug}__{tgt['key']}__{hk}__{variant_key}"
+                    pdf = render_pdf(variant, TAILORED_DIR, stem)
+                    results.append({
+                        "target": tgt["key"],
+                        "target_label": tgt["label"],
+                        "header": hk,
+                        "variant": variant_key,
+                        "filename": pdf.name,
+                        "url": f"/api/tailored/{pdf.name}",
+                        "size_bytes": pdf.stat().st_size,
+                    })
+                except Exception as e:
+                    results.append({
+                        "target": tgt["key"],
+                        "header": hk,
+                        "variant": variant_key,
+                        "error": f"{type(e).__name__}: {e}",
+                    })
+        self._send_json({
+            "status": "ok",
+            "pdfs": results,
+            "total": len(results),
+        })
+
     def _handle_tailor_view_freeform(self, body):
         """Structured editable view for a pasted JD (same shape as the
         /api/tailor response used by the dashboard modal, but no job_id
@@ -458,6 +527,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._send_file(DASHBOARD_PATH, "text/html; charset=utf-8")
         elif path in ("/paste", "/paste.html"):
             self._send_file(PASTE_PATH, "text/html; charset=utf-8")
+        elif path in ("/library", "/library.html"):
+            self._send_file(LIBRARY_PATH, "text/html; charset=utf-8")
         elif path.startswith("/api/tailored/"):
             filename = path[len("/api/tailored/"):]
             self._serve_tailored_pdf(filename)
@@ -470,6 +541,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._send_json({
                 "default": corpus.get("default_header_key", "germany"),
                 "variants": corpus.get("header_variants", {}),
+            })
+        elif path == "/api/role_targets":
+            try:
+                corpus, cfg = self._ensure_corpus()
+            except RuntimeError as e:
+                self._send_json({"error": str(e)}, status=500)
+                return
+            self._send_json({
+                "targets": cfg.get("role_targets", []),
+                "header_variants": list(corpus.get("header_variants", {}).keys()),
             })
         elif path == "/api/tailored":
             # List previously generated PDFs.
@@ -590,6 +671,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         elif path == "/api/tailor_view_freeform":
             self._handle_tailor_view_freeform(body)
+
+        elif path == "/api/batch_generate":
+            self._handle_batch_generate(body)
 
         elif path == "/api/rebuild_corpus":
             self._handle_rebuild_corpus()

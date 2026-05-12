@@ -59,6 +59,64 @@
       ],
       "preferred_tags": ["transformation", "saas_cloud", "leadership", "stakeholder_global"],
       "boost_phrases": ["transformation", "migration", "rollout", "operating model"]
+    },
+    {
+      "key": "it_process_manager",
+      "label": "IT Process Manager",
+      "detector_keywords": [
+        "process manager", "process design", "process governance", "lean", "six sigma",
+        "bpm", "process automation", "rpa", "continuous improvement", "operational excellence",
+        "workflow"
+      ],
+      "preferred_tags": ["governance", "tooling", "delivery", "transformation"],
+      "boost_phrases": ["process", "workflow", "standardis", "operational excellence", "lean"]
+    },
+    {
+      "key": "it_project_manager",
+      "label": "IT Project Manager",
+      "detector_keywords": [
+        "project manager", "delivery", "scope", "schedule", "raid", "stakeholder",
+        "sprint", "agile", "scrum", "safe", "jira", "milestones", "go-live"
+      ],
+      "preferred_tags": ["delivery", "leadership", "tooling", "metric"],
+      "boost_phrases": ["delivered", "led", "project", "schedule", "milestone", "go-live"]
+    }
+  ],
+  "role_targets": [
+    {
+      "key": "it_governance_manager",
+      "label": "IT Governance Manager",
+      "profile": "governance_pm",
+      "variant": "leadership",
+      "seed_jd": "Senior IT Governance Manager responsible for designing and operating the IT governance framework across the enterprise. Owns the steering committee cadence, RAID management, decision rights and policy framework. Coordinates audits and control assurance across the IT portfolio. Partners with CIO, group risk and compliance functions on policy frameworks for AI, cloud, data and SaaS investment decisions. Defines governance for ServiceNow ITSM and LeanIX as portfolio platforms. Reports to CIO and executive leadership; runs board-level reporting and storyline development."
+    },
+    {
+      "key": "it_process_manager",
+      "label": "IT Process Manager",
+      "profile": "it_process_manager",
+      "variant": "tooling",
+      "seed_jd": "Senior IT Process Manager responsible for end-to-end IT process design, standardisation, automation and continuous improvement. Owns the operating model for IT delivery processes, runs lean / six-sigma improvement programs, and embeds standard workflows across PMO, EA and operations. Drives ServiceNow ITSM workflow design, custom modules and Jira integration. Coordinates RPA and platform automation initiatives. Partners with portfolio, vendor and operations leadership on process governance, KPI design and operational excellence."
+    },
+    {
+      "key": "it_project_portfolio_manager",
+      "label": "IT Project Portfolio Manager",
+      "profile": "portfolio_pm",
+      "variant": "metrics",
+      "seed_jd": "Senior IT Project Portfolio Manager owning the intake, prioritisation and steering of the IT portfolio (60-100 concurrent projects, budgets up to 50 million EUR). Manages RAID, dependencies, capacity planning and contingency reserves. Designs and chairs portfolio steering committees, runs weekly portfolio syncs and quarterly CIO / board reviews. Coordinates ServiceNow / LeanIX adoption for portfolio reporting and EA integration. Reports to CIO and group governance functions on portfolio health, change-control and benefit realisation."
+    },
+    {
+      "key": "it_project_manager",
+      "label": "IT Project Manager",
+      "profile": "it_project_manager",
+      "variant": "leadership",
+      "seed_jd": "Senior IT Project Manager responsible for end-to-end delivery of strategic IT projects. Owns scope, schedule, budget, RAID and stakeholder communications. Manages cross-functional teams and external vendors across the full delivery lifecycle. Coordinates with EA, security, operations and business sponsors. Experience with hybrid and agile delivery, SAFe, Scrum, Jira and Confluence required. Drives go-live readiness, change control and post-implementation review. Reports to programme or portfolio leadership."
+    },
+    {
+      "key": "it_product_owner",
+      "label": "IT Product Owner",
+      "profile": "product_owner",
+      "variant": "tooling",
+      "seed_jd": "IT Product Owner owning the backlog, roadmap and stakeholder engagement for an enterprise IT platform such as ServiceNow ITSM, LeanIX or Jira. Defines features and user stories, prioritises the backlog with business stakeholders, and partners with development and scrum master on sprint planning, refinement and delivery. Drives platform adoption, integration design and continuous improvement. Coordinates custom module development and bidirectional integrations. Reports to product or platform leadership."
     }
   ],
   "variants": [

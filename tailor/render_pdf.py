@@ -45,7 +45,10 @@ PHOTO_CANDIDATES = [
     ASSETS_DIR / "photo.jpeg",
     ASSETS_DIR / "photo.png",
 ]
-SQUARE_PHOTO_CACHE = ASSETS_DIR / ".cache_photo_square.jpg"
+# 4:5 portrait crop is the standard headshot ratio (LinkedIn, Instagram
+# portrait). Cache filename includes the ratio so changing it forces a
+# re-crop on next render.
+PHOTO_CACHE = ASSETS_DIR / ".cache_photo_4x5.jpg"
 
 
 # Round-trip mode (default) preserves dict insertion order. The 'safe' typ
@@ -183,12 +186,16 @@ def build_rendercv_yaml(tailored: dict, include_photo: bool = True) -> dict:
                 "connections": {
                     "phone_number_format": "international",
                 },
-                # Photo lives in the top right corner of the header band.
-                # photo_width is the rendered size; the source is pre-cropped
-                # to a square so it shows up as a clean tile, not a strip.
-                **({"photo_position": "right", "photo_width": "3cm",
-                    "photo_space_left": "0.4cm", "photo_space_right": "0cm"}
-                   if photo_path else {}),
+                # When a photo is present, left-align the header text so it
+                # doesn't visually fight with the right-edge headshot.
+                # Without a photo, center alignment (RenderCV default) is fine.
+                **({
+                    "alignment": "left",
+                    "photo_position": "right",
+                    "photo_width": "2.8cm",
+                    "photo_space_left": "0.4cm",
+                    "photo_space_right": "0cm",
+                } if photo_path else {}),
             },
         },
         "locale": {"language": "english"},
@@ -200,7 +207,7 @@ def build_rendercv_yaml(tailored: dict, include_photo: bool = True) -> dict:
 
 
 def find_photo() -> Path | None:
-    """Locate a source photo in assets/ and return a cached, square-cropped
+    """Locate a source photo in assets/ and return a cached, 4:5-cropped
     copy ready for RenderCV. Returns None if no photo is configured.
 
     The original portrait is left untouched. The cache is invalidated when
@@ -215,24 +222,31 @@ def find_photo() -> Path | None:
         return None
     try:
         # Reuse cache only if source hasn't been replaced since.
-        if SQUARE_PHOTO_CACHE.exists() and SQUARE_PHOTO_CACHE.stat().st_mtime >= source.stat().st_mtime:
-            return SQUARE_PHOTO_CACHE
+        if PHOTO_CACHE.exists() and PHOTO_CACHE.stat().st_mtime >= source.stat().st_mtime:
+            return PHOTO_CACHE
         with Image.open(source) as img:
             img = img.convert("RGB")
             w, h = img.size
-            side = min(w, h)
-            # Center crop horizontally; bias the vertical crop UP so the face
-            # (typically in the upper third of a portrait) stays in frame.
-            left = (w - side) // 2
-            top = max(0, int((h - side) * 0.18))
-            box = (left, top, left + side, top + side)
+            # 4:5 portrait (width:height). Take the widest possible 4:5 crop
+            # the source can support, centered horizontally, with a slight
+            # upward bias so the face (usually in the upper portion of a
+            # portrait) stays in frame.
+            target_w = min(w, (h * 4) // 5)
+            target_h = (target_w * 5) // 4
+            if target_h > h:
+                target_h = h
+                target_w = (target_h * 4) // 5
+            left = (w - target_w) // 2
+            top = max(0, int((h - target_h) * 0.18))
+            box = (left, top, left + target_w, top + target_h)
             cropped = img.crop(box)
-            # 600 px is plenty for a 3 cm CV photo at print DPI.
-            if side > 600:
-                cropped = cropped.resize((600, 600), Image.LANCZOS)
-            SQUARE_PHOTO_CACHE.parent.mkdir(parents=True, exist_ok=True)
-            cropped.save(SQUARE_PHOTO_CACHE, "JPEG", quality=88, optimize=True)
-        return SQUARE_PHOTO_CACHE
+            # 480x600 keeps print quality at 3 cm wide while keeping the
+            # PDF small.
+            if target_w > 480:
+                cropped = cropped.resize((480, 600), Image.LANCZOS)
+            PHOTO_CACHE.parent.mkdir(parents=True, exist_ok=True)
+            cropped.save(PHOTO_CACHE, "JPEG", quality=88, optimize=True)
+        return PHOTO_CACHE
     except Exception:
         return None
 

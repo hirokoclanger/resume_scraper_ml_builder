@@ -77,6 +77,7 @@ from tailor.retrieval import (  # noqa: E402
 from tailor.render_pdf import render_pdf, slugify  # noqa: E402
 from tailor.render_docx import render_docx  # noqa: E402
 from tailor.skills import coverage as skill_coverage, extract_skills  # noqa: E402
+from tailor.draft_loader import list_drafts, build_tailored as draft_build_tailored  # noqa: E402
 
 # Will be set after server constructed so /api/shutdown can stop it
 _server_ref = None
@@ -305,6 +306,65 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "profile": variant["profile"],
             "profile_label": variant["profile_label"],
             "tailoring": build_brief(variant),
+        })
+
+    def _handle_render_draft(self, body):
+        """Render one drafts/Eiselt_*.md against one header variant.
+
+        Body:
+          {
+            "draft": "Eiselt_ITGovernance.md",
+            "header_key": "germany",
+            "include_photo": true,
+            "format": "pdf" | "docx"   # default pdf
+          }
+
+        The draft is the editorial source of truth; we do not re-rank.
+        Header swap is the only per-cell variable beyond photo on/off.
+        """
+        draft_filename = (body.get("draft") or "").strip()
+        header_key = (body.get("header_key") or "").strip()
+        fmt = (body.get("format") or "pdf").strip().lower()
+        include_photo = bool(body.get("include_photo", True))
+        if not draft_filename:
+            self._send_json({"error": "draft required"}, status=400)
+            return
+        if not header_key:
+            self._send_json({"error": "header_key required"}, status=400)
+            return
+        try:
+            corpus, _cfg = self._ensure_corpus()
+        except RuntimeError as e:
+            self._send_json({"error": str(e)}, status=500)
+            return
+        header = corpus.get("header_variants", {}).get(header_key)
+        if not header:
+            self._send_json({"error": f"unknown header variant '{header_key}'"}, status=400)
+            return
+        label = draft_filename.replace("Eiselt_", "").replace(".md", "")
+        try:
+            tailored = draft_build_tailored(draft_filename, header, draft_label=label)
+        except FileNotFoundError as e:
+            self._send_json({"error": str(e)}, status=404)
+            return
+        # Filename: Eiselt__Library__{draft}__{header}.{ext}
+        stem = f"Eiselt__Library__{label}__{header_key}"
+        try:
+            if fmt == "docx":
+                out = render_docx(tailored, TAILORED_DIR, stem, include_photo=include_photo)
+            else:
+                out = render_pdf(tailored, TAILORED_DIR, stem, include_photo=include_photo)
+        except Exception as e:
+            self._send_json({"error": f"{type(e).__name__}: {e}"}, status=500)
+            return
+        self._send_json({
+            "status": "ok",
+            "draft": draft_filename,
+            "header": header_key,
+            "format": fmt,
+            "filename": out.name,
+            "url": f"/api/tailored/{out.name}",
+            "size_bytes": out.stat().st_size,
         })
 
     def _handle_batch_generate(self, body):
@@ -827,6 +887,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "targets": cfg.get("role_targets", []),
                 "header_variants": list(corpus.get("header_variants", {}).keys()),
             })
+        elif path == "/api/drafts":
+            try:
+                corpus, _ = self._ensure_corpus()
+            except RuntimeError as e:
+                self._send_json({"error": str(e)}, status=500)
+                return
+            self._send_json({
+                "drafts": list_drafts(),
+                "header_variants": list(corpus.get("header_variants", {}).keys()),
+            })
         elif path == "/api/tailored":
             # List previously generated PDFs.
             if not TAILORED_DIR.exists():
@@ -961,6 +1031,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         elif path == "/api/batch_generate":
             self._handle_batch_generate(body)
+
+        elif path == "/api/render_draft":
+            self._handle_render_draft(body)
 
         elif path == "/api/rebuild_corpus":
             self._handle_rebuild_corpus()

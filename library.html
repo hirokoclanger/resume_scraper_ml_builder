@@ -198,6 +198,23 @@
   </div>
 </div>
 
+<div class="panel">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+    <h2 style="margin:0;font-size:16px">Drafts library</h2>
+    <span style="color:#666;font-size:12px">Edited markdown drafts × 4 header geographies. Each cell uses the draft verbatim — no re-ranking. Use this to spot gaps before final rendering.</span>
+  </div>
+  <div class="controls" style="margin-bottom:10px">
+    <button id="btnDraftsAll">Generate every cell</button>
+    <button id="btnDraftsMissing" class="secondary">Generate only missing</button>
+    <label style="display:inline-flex;gap:6px;align-items:center;font-size:13px;cursor:pointer;margin-left:8px">
+      <input type="checkbox" id="draftsIncludePhoto" checked>
+      Include photo
+    </label>
+    <span class="progress" id="draftsProgress"></span>
+  </div>
+  <div id="draftsGridWrap"><p class="hint">Loading drafts…</p></div>
+</div>
+
 <div class="modal-backdrop" id="cellModal">
   <div class="modal">
     <div class="modal-head">
@@ -652,6 +669,166 @@ cellModalRenderBtn.addEventListener("click", async () => {
     cellModalResetBtn.disabled = false;
   }
 });
+
+// ---- Drafts library panel ----
+let drafts = [];
+let draftsHeaderKeys = [];
+let draftsByName = new Map();
+const draftsProgress = document.getElementById("draftsProgress");
+const draftsGridWrap = document.getElementById("draftsGridWrap");
+
+async function initDrafts() {
+  try {
+    const r = await fetch("/api/drafts").then(r => r.json());
+    drafts = r.drafts || [];
+    draftsHeaderKeys = r.header_variants || [];
+    await syncDraftsPdfs();
+    renderDraftsGrid();
+  } catch (e) {
+    draftsGridWrap.innerHTML = `<p style="color:#c0392b">Could not load drafts: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+async function syncDraftsPdfs() {
+  const r = await fetch("/api/tailored").then(r => r.json());
+  for (const p of r.pdfs || []) {
+    if (p.filename && p.filename.startsWith("Eiselt__Library__")) {
+      draftsByName.set(p.filename, p);
+    }
+  }
+}
+
+function draftFilename(draft, header) {
+  return `Eiselt__Library__${draft.key}__${header}.pdf`;
+}
+
+function renderDraftsGrid() {
+  if (!drafts.length || !draftsHeaderKeys.length) {
+    draftsGridWrap.innerHTML = "<p>No drafts in <code>drafts/</code> yet.</p>";
+    return;
+  }
+  const headerCols = draftsHeaderKeys.map(h =>
+    `<th>${escapeHtml(h)}</th>`
+  ).join("");
+  const rows = drafts.map(d => {
+    const cells = draftsHeaderKeys.map(h => {
+      const filename = draftFilename(d, h);
+      const pdf = draftsByName.get(filename);
+      if (pdf) {
+        return `
+          <td class="cell">
+            <a href="${escapeHtml(pdf.url)}" target="_blank">open PDF</a>
+            <span class="filename" title="${escapeHtml(filename)}">${escapeHtml(filename.replace(/^Eiselt__Library__/, ''))}</span>
+            <button class="tiny secondary" data-d-action="gen" data-draft="${escapeHtml(d.filename)}" data-header="${escapeHtml(h)}">Re-render</button>
+          </td>`;
+      }
+      return `
+        <td class="cell pending">
+          (not yet generated)
+          <br>
+          <button class="tiny" data-d-action="gen" data-draft="${escapeHtml(d.filename)}" data-header="${escapeHtml(h)}">Generate</button>
+        </td>`;
+    }).join("");
+    return `
+      <tr>
+        <td class="role">
+          ${escapeHtml(d.label)}
+          <div style="font-size:11px;font-weight:400;color:#888">${escapeHtml(d.filename)}</div>
+        </td>
+        ${cells}
+      </tr>`;
+  }).join("");
+  draftsGridWrap.innerHTML = `
+    <table class="grid">
+      <thead>
+        <tr><th>Draft</th>${headerCols}</tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+draftsGridWrap.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-d-action='gen']");
+  if (!btn) return;
+  await renderDraftCell(btn.dataset.draft, btn.dataset.header);
+});
+
+async function renderDraftCell(draftFilename, headerKey) {
+  draftsProgress.textContent = `Rendering ${draftFilename} × ${headerKey}…`;
+  try {
+    const includePhoto = document.getElementById("draftsIncludePhoto").checked;
+    const r = await fetch("/api/render_draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        draft: draftFilename,
+        header_key: headerKey,
+        include_photo: includePhoto,
+      }),
+    }).then(r => r.json());
+    if (r.error) {
+      draftsProgress.textContent = "";
+      showToast(r.error, true);
+      return;
+    }
+    draftsByName.set(r.filename, r);
+    renderDraftsGrid();
+    draftsProgress.textContent = `Saved ${r.filename}`;
+    setTimeout(() => draftsProgress.textContent = "", 2400);
+  } catch (e) {
+    draftsProgress.textContent = "";
+    showToast("Network error: " + e.message, true);
+  }
+}
+
+document.getElementById("btnDraftsAll").addEventListener("click", async () => {
+  const total = drafts.length * draftsHeaderKeys.length;
+  let done = 0;
+  for (const d of drafts) {
+    for (const h of draftsHeaderKeys) {
+      draftsProgress.textContent = `${done} / ${total} — ${d.label} × ${h}`;
+      try { await renderOneDraft(d.filename, h); } catch (_) {}
+      done += 1;
+    }
+  }
+  draftsProgress.textContent = `Done — ${done} PDFs`;
+  setTimeout(() => draftsProgress.textContent = "", 3000);
+});
+
+document.getElementById("btnDraftsMissing").addEventListener("click", async () => {
+  const missing = [];
+  for (const d of drafts) {
+    for (const h of draftsHeaderKeys) {
+      if (!draftsByName.has(draftFilename(d, h))) missing.push([d, h]);
+    }
+  }
+  if (!missing.length) return showToast("All cells already rendered");
+  let done = 0;
+  for (const [d, h] of missing) {
+    draftsProgress.textContent = `${done} / ${missing.length} — ${d.label} × ${h}`;
+    try { await renderOneDraft(d.filename, h); } catch (_) {}
+    done += 1;
+  }
+  draftsProgress.textContent = `Done — ${done} new PDFs`;
+  setTimeout(() => draftsProgress.textContent = "", 3000);
+});
+
+async function renderOneDraft(draftFilename, headerKey) {
+  const includePhoto = document.getElementById("draftsIncludePhoto").checked;
+  const r = await fetch("/api/render_draft", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      draft: draftFilename,
+      header_key: headerKey,
+      include_photo: includePhoto,
+    }),
+  }).then(r => r.json());
+  if (r.filename) draftsByName.set(r.filename, r);
+  renderDraftsGrid();
+}
+
+initDrafts();
 
 init();
 </script>

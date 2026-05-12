@@ -311,6 +311,7 @@ def parse_master_md(path: Path) -> dict:
             "phone": "",
             "website": "",
             "linkedin": "",
+            "github": "",
         }
         parts = [p.strip() for p in re.split(r"\s+·\s+|\s+\|\s+", contacts_raw)]
         phones: list[str] = []
@@ -323,6 +324,8 @@ def parse_master_md(path: Path) -> dict:
                 phones.append(part if part.startswith("+") else f"+{part}")
             elif "linkedin" in low and not h["linkedin"]:
                 h["linkedin"] = part
+            elif "github" in low and not h["github"]:
+                h["github"] = part
             elif (".net" in low or ".com" in low or ".app" in low or ".io" in low) and not h["website"]:
                 h["website"] = part
         if phones:

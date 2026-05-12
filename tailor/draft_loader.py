@@ -188,8 +188,16 @@ def load_draft(filename: str) -> dict:
     # Lets a draft restrict its Personal Projects section to a subset of
     # the master-sourced projects. Names matched case-insensitively
     # against the corpus project name (the first word of each entry).
+    #
+    # Constrained to be the first non-empty line of the file (anchored
+    # via re.MULTILINE) so a literal mention of the syntax inside a
+    # blockquote / comment can't accidentally activate the filter.
     project_filter: set[str] | None = None
-    pm = re.search(r"<!--\s*projects:\s*([^-]+?)\s*-->", raw, re.IGNORECASE)
+    pm = re.search(
+        r"^<!--\s*projects:\s*([^-]+?)\s*-->",
+        raw,
+        re.IGNORECASE | re.MULTILINE,
+    )
     if pm:
         wanted = [w.strip().lower() for w in pm.group(1).split(",") if w.strip()]
         if wanted:
@@ -250,22 +258,26 @@ def _master_projects() -> list[dict]:
         if not b.get("source", "").endswith(".md"):
             continue
         text = b["text"]
-        # First word is the project name. RenderCV will display it bold.
-        name_m = re.match(r"^([A-Za-z][A-Za-z0-9_]*)\b", text)
-        if not name_m:
-            continue
-        name = name_m.group(1)
-        if name in seen:
+        # Project name = everything before the first `(` parenthesis (the
+        # markdown link / year tag). Captures multi-word labels like
+        # "News React App" and "Sentiment News Analysis", not just the
+        # first word. Strip a trailing space-only string.
+        paren = text.find("(")
+        if paren <= 0:
+            name = text.split(".")[0].strip()
+        else:
+            name = text[:paren].strip()
+        if not name or name in seen:
             continue
         seen.add(name)
         # Description starts after the first "). " (close-paren period
-        # space) if present; otherwise from the first ". " after the
-        # name; otherwise just trail the whole text after the name.
+        # space) if present; otherwise after the first ". " in the text.
         idx = text.find("). ")
         if idx > 0:
             rest = text[idx + 3:].strip()
         else:
-            rest = text[len(name):].lstrip(". ").strip()
+            dot = text.find(". ", len(name))
+            rest = text[dot + 2:].strip() if dot > 0 else ""
         out.append({"name": name, "summary": rest})
     return out
 

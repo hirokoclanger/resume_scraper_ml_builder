@@ -320,12 +320,20 @@ def _normalise_url(text: str) -> str | None:
 
 
 def _social_networks(header: dict) -> list[dict]:
+    """LinkedIn + GitHub rendered as RenderCV social_networks entries.
+    Both expose a `username` extracted from whatever URL form the
+    header variant stored (linkedin.com/in/<u> or github.com/<u>)."""
     out = []
     li = header.get("linkedin", "")
     if li:
         m = re.search(r"linkedin\.com/in/([A-Za-z0-9\-_.]+)", li)
         username = m.group(1) if m else li.strip().rstrip("/").rsplit("/", 1)[-1]
         out.append({"network": "LinkedIn", "username": username})
+    gh = header.get("github", "")
+    if gh:
+        m = re.search(r"github\.com/([A-Za-z0-9\-_.]+)", gh)
+        username = m.group(1) if m else gh.strip().rstrip("/").rsplit("/", 1)[-1]
+        out.append({"network": "GitHub", "username": username})
     return out
 
 

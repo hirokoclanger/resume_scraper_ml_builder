@@ -34,7 +34,7 @@ _CANONICAL = [
         ["icelt", "independent it"]),
     ("career_break_2026", "Self-funded", "2026-01", "2026-03", "Vietnam, Cambodia, Thailand",
         ["career break", "southeast asia"]),
-    ("man_portfolio_2022", "MAN Truck & Bus SE (Volkswagen Group / TRATON)", "2022-09", "2025-12", "Munich, Germany",
+    ("man_portfolio_2022", "MAN Truck & Bus SE", "2022-09", "2025-12", "Munich, Germany",
         ["portfolio manager", "portfolio and product"]),
     ("man_techpm_2018", "MAN Truck & Bus SE", "2018-01", "2022-08", "Munich, Germany",
         ["technical project manager"]),
@@ -162,6 +162,20 @@ def _parse_lines(body: str) -> list[str]:
     return [ln.strip() for ln in body.splitlines() if ln.strip() and not ln.startswith("-")]
 
 
+def _parse_headline(header_body: str) -> str | None:
+    """The draft's ## Header section first content line is `**Bold Title**`.
+    That title is the headline this draft wants under the candidate's name —
+    it differs per role (e.g. "Senior IT Governance Manager" for the
+    governance draft, "Senior Product Owner — ServiceNow ITSM / LeanIX" for
+    the PO draft) and overrides the geography header's default headline."""
+    for ln in header_body.splitlines():
+        s = ln.strip()
+        m = re.match(r"^\*\*(.+?)\*\*$", s)
+        if m:
+            return m.group(1).strip()
+    return None
+
+
 def load_draft(filename: str) -> dict:
     """Read one drafts/Eiselt_*.md and return a partial composition (no
     header — the caller supplies one)."""
@@ -171,6 +185,7 @@ def load_draft(filename: str) -> dict:
     text = _strip_keyword_block(path.read_text(encoding="utf-8"))
     sections = _section_split(text)
 
+    headline = _parse_headline(sections.get("header", ""))
     summary = _parse_summary(sections.get("summary", ""))
     skills = _parse_bullets(sections.get("core competencies", ""))
     roles = _parse_experience(sections.get("experience", ""))
@@ -183,6 +198,7 @@ def load_draft(filename: str) -> dict:
     projects = _master_projects()
 
     return {
+        "headline": headline,
         "summary": summary,
         "skills": skills,
         "roles": roles,
@@ -233,14 +249,19 @@ def _master_projects() -> list[dict]:
 
 def build_tailored(draft_filename: str, header: dict, *, draft_label: str | None = None) -> dict:
     """Assemble the full render-ready dict from a draft + a chosen header
-    variant."""
+    variant. The draft's headline override (parsed from its ## Header
+    section) replaces the geography header's default headline so each
+    cell's top line matches the draft's target role title."""
     body = load_draft(draft_filename)
+    merged_header = dict(header)
+    if body.get("headline"):
+        merged_header["headline"] = body["headline"]
     return {
         "profile": "draft",
         "profile_label": draft_label or draft_filename.replace("Eiselt_", "").replace(".md", ""),
         "variant": "draft",
         "variant_label": "Draft",
-        "header": header,
+        "header": merged_header,
         "summary": body["summary"],
         "skills": body["skills"],
         "roles": body["roles"],

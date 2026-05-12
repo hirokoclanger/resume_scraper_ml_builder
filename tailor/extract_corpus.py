@@ -92,7 +92,11 @@ CANONICAL_ROLES = [
     {
         "key": "man_portfolio_2022",
         "position": "IT Portfolio Manager and Product Owner",
-        "company": "MAN Truck & Bus SE (Volkswagen Group / TRATON)",
+        # Drop the "(Volkswagen Group / TRATON)" parenthetical — the
+        # RenderCV layout wraps it awkwardly across the date column.
+        # The Volkswagen / TRATON ownership context lives in the summary
+        # paragraph anyway.
+        "company": "MAN Truck & Bus SE",
         "start_date": "2022-09",
         "end_date": "2025-12",
         "location": "Munich, Germany",

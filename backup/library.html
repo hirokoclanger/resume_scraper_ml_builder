@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Resume library — pre-generated baselines</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0; padding: 24px 32px; background: #fafafa; color: #1a1a1a;
+    max-width: 1200px; margin: 0 auto;
+  }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 22px; }
+  header .meta { color: #666; font-size: 13px; }
+  header a { color: #6b46c1; text-decoration: none; font-size: 13px;
+             border: 1px solid #6b46c1; padding: 6px 10px; border-radius: 4px; }
+  header a:hover { background: #6b46c1; color: white; }
+  .panel {
+    background: white; border: 1px solid #e5e5e5; border-radius: 8px;
+    padding: 18px; margin-bottom: 16px;
+  }
+  .hint { font-size: 12px; color: #777; margin-top: 4px; line-height: 1.5; }
+  button {
+    background: #6b46c1; color: white; border: 1px solid #6b46c1;
+    padding: 10px 16px; border-radius: 4px; font-size: 14px; font-weight: 500;
+    cursor: pointer;
+  }
+  button:hover { background: #553a99; }
+  button:disabled { background: #aaa; border-color: #aaa; cursor: not-allowed; }
+  button.secondary { background: white; color: #555; border: 1px solid #ccc; }
+  button.secondary:hover { background: #eee; }
+  button.tiny { padding: 4px 10px; font-size: 12px; }
+  .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .controls label { font-size: 12px; color: #555; display: flex; gap: 4px; align-items: center; }
+  .controls .group { display: flex; gap: 4px; padding: 4px 8px; background: #f5f5f5; border-radius: 4px; }
+  .controls .group strong { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #777; }
+  table.grid {
+    width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px;
+  }
+  table.grid th, table.grid td {
+    border: 1px solid #e5e5e5; padding: 6px 8px; text-align: left; vertical-align: middle;
+  }
+  table.grid th {
+    background: #f7f4ff; color: #4a2d96; font-weight: 600;
+    text-transform: uppercase; font-size: 11px; letter-spacing: 0.04em;
+  }
+  table.grid td.role {
+    background: #fcfbff; font-weight: 600; color: #1f3148; white-space: nowrap;
+  }
+  table.grid td.cell { text-align: center; }
+  table.grid td.cell a { color: #6b46c1; font-size: 12px; }
+  table.grid td.cell .filename {
+    font-size: 11px; font-family: ui-monospace, SF Mono, monospace; color: #555;
+    display: block; max-width: 220px; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; margin: 2px auto;
+  }
+  table.grid td.cell.pending { color: #aaa; font-style: italic; }
+  table.grid td.cell.error { background: #fff5f4; color: #c0392b; font-size: 11px; }
+  .legend {
+    margin-top: 14px; font-size: 12px; color: #555; line-height: 1.6;
+  }
+  .legend code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; background: #222; color: white;
+    padding: 10px 16px; border-radius: 4px; font-size: 13px;
+    opacity: 0; transition: opacity 0.2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { background: #c0392b; }
+  .progress { font-size: 12px; color: #6b46c1; margin-top: 8px; }
+
+  /* ---- Editable cell modal ---- */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: none; align-items: stretch; justify-content: center; z-index: 10;
+    padding: 32px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: white; border-radius: 8px; width: 100%; max-width: 980px;
+    display: flex; flex-direction: column; max-height: calc(100vh - 64px);
+  }
+  .modal-head {
+    padding: 14px 18px; border-bottom: 1px solid #eee;
+    display: flex; gap: 12px; align-items: center;
+  }
+  .modal-head h2 { margin: 0; font-size: 16px; color: #1f3148; flex: 1; }
+  .modal-head .close { background: transparent; border: none; font-size: 22px; cursor: pointer; color: #666; }
+  .modal-body { padding: 18px; overflow-y: auto; flex: 1; font-size: 14px; }
+  .modal-foot {
+    padding: 12px 18px; border-top: 1px solid #eee;
+    display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap;
+  }
+
+  /* Editable view bits (same styling system as the dashboard modal) */
+  .ed-banner {
+    background: #f7f4ff; border: 1px solid #d8d0ec; border-radius: 6px;
+    padding: 10px 14px; font-size: 13px; margin-bottom: 14px;
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  }
+  .ed-banner strong { color: #4a2d96; }
+  .ed-section { margin: 14px 0; }
+  .ed-section h3 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: #6b46c1; margin: 14px 0 6px; border-bottom: 1px solid #e8e2f5;
+    padding-bottom: 4px;
+  }
+  .ed-bullet {
+    display: flex; gap: 8px; align-items: flex-start;
+    padding: 6px 8px; border-radius: 4px;
+    margin-bottom: 4px; font-size: 13px; line-height: 1.45;
+  }
+  .ed-bullet:hover { background: #f7f5fc; }
+  .ed-bullet .text { flex: 1; }
+  .ed-bullet button {
+    background: transparent; color: #c0392b; border: 1px solid transparent;
+    font-size: 16px; line-height: 1; padding: 0 6px; cursor: pointer; border-radius: 3px;
+  }
+  .ed-bullet:hover button { border-color: #f4d4cf; }
+  .ed-bullet button:hover { background: #f8d7d4; }
+  .ed-role {
+    border: 1px solid #e8e2f5; border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 10px;
+  }
+  .ed-role.removed { opacity: 0.45; background: #f5f3fa; }
+  .ed-role-head {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 6px;
+  }
+  .ed-role-head .title {
+    flex: 1; font-weight: 600; font-size: 13px; color: #222;
+  }
+  .ed-role-head .meta { font-size: 12px; color: #666; margin-left: 6px; }
+  .ed-role-head button {
+    background: white; color: #555; border: 1px solid #ccc;
+    padding: 2px 8px; font-size: 12px; border-radius: 4px; cursor: pointer;
+  }
+  .ed-role-head button.danger { color: #c0392b; border-color: #f4c4be; }
+  .ed-add { margin-top: 4px; font-size: 12px; display: flex; gap: 6px; align-items: center; }
+  .ed-add select {
+    flex: 1; padding: 4px 6px; font-size: 12px;
+    border: 1px solid #ccc; border-radius: 4px; background: white;
+  }
+  .ed-add button {
+    background: #6b46c1; color: white; border: 1px solid #6b46c1;
+    padding: 3px 10px; font-size: 12px; border-radius: 4px; cursor: pointer;
+  }
+  .ed-summary-card {
+    background: #fcfbff; border: 1px solid #e8e2f5; border-radius: 6px;
+    padding: 10px 12px; font-size: 13px; line-height: 1.5;
+    display: flex; gap: 8px; align-items: flex-start;
+  }
+  .ed-summary-card.empty { color: #888; font-style: italic; }
+  .ed-summary-card .text { flex: 1; }
+  .ed-summary-card select {
+    font-size: 12px; padding: 4px; border: 1px solid #ccc; border-radius: 4px;
+    background: white; max-width: 320px;
+  }
+  .modal-result { font-size: 12px; color: #555; margin-right: auto; }
+  .modal-result.err { color: #c0392b; }
+  .modal-result a { color: #6b46c1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Resume library</h1>
+  <span class="meta">Pre-generate one PDF per (role target × header variant). Use these as starting points before tailoring for a specific job.</span>
+  <span style="margin-left:auto"></span>
+  <a href="/">Job finder</a>
+  <a href="/paste">Paste JD</a>
+</header>
+
+<div class="panel">
+  <div class="controls">
+    <button id="btnGenAll">Generate every cell</button>
+    <button id="btnGenMissing" class="secondary">Generate only missing</button>
+    <label style="display:inline-flex;gap:6px;align-items:center;font-size:13px;cursor:pointer;margin-left:8px">
+      <input type="checkbox" id="batchIncludePhoto" checked>
+      Include photo in batch
+    </label>
+    <span class="progress" id="progress"></span>
+  </div>
+  <div class="hint">
+    Each cell is one rendered PDF. The Role column drives bullet ranking
+    (via a built-in seed JD per role) and chooses a default variant
+    (metrics / leadership / tooling). The header columns swap the
+    location / work-rights line. <code>Eiselt__Library__{role}__{header}__{variant}.pdf</code>
+    under <code>results/tailored/</code>.
+  </div>
+  <div id="gridWrap"><p class="hint">Loading library shape…</p></div>
+  <div class="legend">
+    Tip: regenerate a single cell with its <strong>Generate</strong> button
+    if you edit the master sentences markdown or a header variant.
+    For job-specific tailoring (add/remove bullets, drop roles), use the
+    <a href="/paste">Paste JD</a> page or the per-job Tailor button on the
+    main dashboard.
+  </div>
+</div>
+
+<div class="modal-backdrop" id="cellModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="cellModalTitle">Edit cell</h2>
+      <button class="close" id="cellModalClose">&times;</button>
+    </div>
+    <div class="modal-body" id="cellModalBody"><em>Loading…</em></div>
+    <div class="modal-foot">
+      <span class="modal-result" id="cellModalResult"></span>
+      <label style="display:inline-flex;gap:6px;align-items:center;font-size:13px;cursor:pointer;margin-right:6px">
+        <input type="checkbox" id="cellIncludePhoto" checked>
+        Include photo
+      </label>
+      <button class="secondary" id="cellModalResetBtn">Reset to seed JD</button>
+      <button id="cellModalRenderBtn">Save &amp; render PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const toastEl = document.getElementById("toast");
+function showToast(msg, err) {
+  toastEl.textContent = msg;
+  toastEl.classList.toggle("error", !!err);
+  toastEl.classList.add("show");
+  setTimeout(() => toastEl.classList.remove("show"), 2400);
+}
+function escapeHtml(s) {
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+let targets = [];
+let headerKeys = [];
+let pdfByName = new Map();
+const progressEl = document.getElementById("progress");
+const gridWrap = document.getElementById("gridWrap");
+
+async function init() {
+  try {
+    const [tRes, pRes] = await Promise.all([
+      fetch("/api/role_targets").then(r => r.json()),
+      fetch("/api/tailored").then(r => r.json()),
+    ]);
+    targets = tRes.targets || [];
+    headerKeys = tRes.header_variants || [];
+    pdfByName = new Map((pRes.pdfs || []).map(p => [p.filename, p]));
+    renderGrid();
+  } catch (e) {
+    gridWrap.innerHTML = `<p style="color:#c0392b">Could not load library shape: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+function expectedFilename(target, header) {
+  const variant = target.variant || "leadership";
+  return `Eiselt__Library__${target.key}__${header}__${variant}.pdf`;
+}
+
+function renderGrid() {
+  if (!targets.length || !headerKeys.length) {
+    gridWrap.innerHTML = "<p>No targets or header variants configured.</p>";
+    return;
+  }
+  const headerCols = headerKeys.map(h =>
+    `<th>${escapeHtml(h)}</th>`
+  ).join("");
+  const rows = targets.map(t => {
+    const cells = headerKeys.map(h => {
+      const filename = expectedFilename(t, h);
+      const pdf = pdfByName.get(filename);
+      const editBtn = `<button class="tiny secondary" data-action="edit" data-target="${escapeHtml(t.key)}" data-header="${escapeHtml(h)}">Edit</button>`;
+      if (pdf) {
+        return `
+          <td class="cell">
+            <a href="${escapeHtml(pdf.url)}" target="_blank">open PDF</a>
+            <span class="filename" title="${escapeHtml(filename)}">${escapeHtml(filename.replace(/^Eiselt__Library__/, ''))}</span>
+            <div style="display:flex;gap:4px;justify-content:center;margin-top:2px">
+              ${editBtn}
+              <button class="tiny secondary" data-action="gen" data-target="${escapeHtml(t.key)}" data-header="${escapeHtml(h)}">Regen from seed</button>
+            </div>
+          </td>`;
+      }
+      return `
+        <td class="cell pending">
+          (not yet generated)
+          <div style="display:flex;gap:4px;justify-content:center;margin-top:4px">
+            ${editBtn}
+            <button class="tiny" data-action="gen" data-target="${escapeHtml(t.key)}" data-header="${escapeHtml(h)}">Generate</button>
+          </div>
+        </td>`;
+    }).join("");
+    return `
+      <tr>
+        <td class="role">
+          ${escapeHtml(t.label)}
+          <div style="font-size:11px;font-weight:400;color:#888">profile: ${escapeHtml(t.profile)} · variant: ${escapeHtml(t.variant || "leadership")}</div>
+        </td>
+        ${cells}
+      </tr>`;
+  }).join("");
+  gridWrap.innerHTML = `
+    <table class="grid">
+      <thead>
+        <tr><th>Role target</th>${headerCols}</tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+gridWrap.addEventListener("click", async (e) => {
+  const editBtn = e.target.closest("button[data-action='edit']");
+  if (editBtn) {
+    openCellModal(editBtn.dataset.target, editBtn.dataset.header);
+    return;
+  }
+  const btn = e.target.closest("button[data-action='gen']");
+  if (!btn) return;
+  const targetKey = btn.dataset.target;
+  const headerKey = btn.dataset.header;
+  await runBatch([targetKey], [headerKey], `Regenerating ${targetKey} / ${headerKey}…`);
+});
+
+document.getElementById("btnGenAll").addEventListener("click", () =>
+  runBatch(null, null, `Generating ${targets.length * headerKeys.length} PDFs…`)
+);
+
+document.getElementById("btnGenMissing").addEventListener("click", () => {
+  const missing = [];
+  for (const t of targets) {
+    for (const h of headerKeys) {
+      if (!pdfByName.has(expectedFilename(t, h))) {
+        missing.push([t.key, h]);
+      }
+    }
+  }
+  if (!missing.length) return showToast("Nothing to generate — everything exists");
+  // Group missing cells into a single batch call (server handles target × header product).
+  const targetKeys = [...new Set(missing.map(([t]) => t))];
+  const headerKeysSubset = [...new Set(missing.map(([, h]) => h))];
+  // If the cartesian product would over-generate (because we'd also re-render
+  // existing cells), fall back to per-cell regen instead.
+  if (targetKeys.length * headerKeysSubset.length === missing.length) {
+    runBatch(targetKeys, headerKeysSubset, `Generating ${missing.length} missing PDFs…`);
+  } else {
+    runMissingSerially(missing);
+  }
+});
+
+async function runMissingSerially(pairs) {
+  progressEl.textContent = `0 / ${pairs.length}`;
+  let done = 0;
+  for (const [t, h] of pairs) {
+    await runBatch([t], [h], null);
+    done += 1;
+    progressEl.textContent = `${done} / ${pairs.length}`;
+  }
+  progressEl.textContent = `Done — ${done} PDFs`;
+  setTimeout(() => progressEl.textContent = "", 2000);
+}
+
+async function runBatch(targetKeys, headerKeysSubset, progressMsg) {
+  const body = { include_photo: document.getElementById("batchIncludePhoto").checked };
+  if (targetKeys) body.target_keys = targetKeys;
+  if (headerKeysSubset) body.header_keys = headerKeysSubset;
+  if (progressMsg) progressEl.textContent = progressMsg;
+  try {
+    const res = await fetch("/api/batch_generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.error) {
+      showToast(data.error, true);
+      return;
+    }
+    for (const p of data.pdfs || []) {
+      if (p.filename) pdfByName.set(p.filename, p);
+    }
+    renderGrid();
+    if (progressMsg) {
+      const errs = (data.pdfs || []).filter(p => p.error).length;
+      progressEl.textContent = errs
+        ? `${data.total - errs} ok · ${errs} failed`
+        : `${data.total} PDFs generated`;
+      setTimeout(() => progressEl.textContent = "", 3000);
+    }
+  } catch (e) {
+    showToast("Network error: " + e.message, true);
+    progressEl.textContent = "";
+  }
+}
+
+// ---- Editable cell modal ----
+const cellModal = document.getElementById("cellModal");
+const cellModalBody = document.getElementById("cellModalBody");
+const cellModalTitle = document.getElementById("cellModalTitle");
+const cellModalResult = document.getElementById("cellModalResult");
+const cellModalRenderBtn = document.getElementById("cellModalRenderBtn");
+const cellModalResetBtn = document.getElementById("cellModalResetBtn");
+
+const cellState = { target: null, header: null, view: null, edits: null };
+
+function closeCellModal() { cellModal.classList.remove("show"); }
+document.getElementById("cellModalClose").addEventListener("click", closeCellModal);
+cellModal.addEventListener("click", (e) => { if (e.target === cellModal) closeCellModal(); });
+
+async function openCellModal(targetKey, headerKey) {
+  const target = targets.find(t => t.key === targetKey);
+  if (!target) return showToast("Unknown target", true);
+  cellState.target = target;
+  cellState.header = headerKey;
+  cellState.view = null;
+  cellState.edits = null;
+  cellModalTitle.textContent = `${target.label} — header: ${headerKey}`;
+  cellModalBody.innerHTML = "<em>Ranking bullets from seed JD…</em>";
+  cellModalResult.textContent = "";
+  cellModal.classList.add("show");
+  await loadCellComposition();
+}
+
+async function loadCellComposition() {
+  try {
+    const res = await fetch("/api/tailor_view_freeform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jd_text: cellState.target.seed_jd,
+        company: "Library",
+        title: cellState.target.key,
+        variant: cellState.target.variant || "leadership",
+      }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      cellModalBody.innerHTML = `<p style="color:#c0392b">${escapeHtml(data.error)}</p>`;
+      return;
+    }
+    cellState.view = data.view;
+    cellState.edits = editsFromView(data.view);
+    cellState.edits.header_key = cellState.header;
+    renderCellBody();
+  } catch (e) {
+    cellModalBody.innerHTML = `<p style="color:#c0392b">Network error: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+function editsFromView(view) {
+  return {
+    profile: view.profile,
+    profile_label: view.profile_label,
+    header_key: view.default_header_key || "germany",
+    summary_id: (view.summary.picked[0] && view.summary.picked[0].id) || null,
+    skill_ids: view.skills.picked.map(b => b.id),
+    roles: view.roles.map(r => ({
+      key: r.key, position: r.position, company: r.company,
+      start_date: r.start_date, end_date: r.end_date, location: r.location,
+      highlight_ids: r.highlights_picked.map(b => b.id),
+    })),
+  };
+}
+
+function findRoleInView(roleKey) { return cellState.view.roles.find(r => r.key === roleKey); }
+function findRoleInEdits(roleKey) { return cellState.edits.roles.find(r => r.key === roleKey); }
+
+function renderCellBody() {
+  const view = cellState.view, edits = cellState.edits;
+  if (!view || !edits) return;
+  const summaryPool = view.summary.picked.concat(view.summary.unpicked);
+  const summaryCurrent = summaryPool.find(b => b.id === edits.summary_id);
+  const skillsAll = view.skills.picked.concat(view.skills.unpicked);
+  const skillsPickedIds = new Set(edits.skill_ids);
+  const skillsPicked = edits.skill_ids.map(id => skillsAll.find(b => b.id === id)).filter(Boolean);
+  const skillsUnpicked = skillsAll.filter(b => !skillsPickedIds.has(b.id));
+
+  const banner = `
+    <div class="ed-banner">
+      <div><strong>Profile:</strong> ${escapeHtml(view.profile_label)} · <strong>Variant:</strong> ${escapeHtml(cellState.target.variant || "leadership")} · <strong>Header:</strong> ${escapeHtml(cellState.header)}</div>
+    </div>
+    <div style="font-size:12px;color:#666;margin-bottom:10px">
+      Edits stay only inside this modal. <strong>Save &amp; render PDF</strong> writes the modified composition to the same library filename, overwriting the old PDF. Header and variant are locked because they identify this library cell — use the dashboard modal or paste page if you want to change those.
+    </div>
+  `;
+
+  const summaryHtml = `
+    <div class="ed-section">
+      <h3>Summary</h3>
+      <div class="ed-summary-card ${summaryCurrent ? "" : "empty"}">
+        <div class="text">${summaryCurrent ? escapeHtml(summaryCurrent.text) : "No summary picked. Choose one →"}</div>
+        ${summaryPool.length > 1 ? `
+          <select data-action="set-summary">
+            <option value="">— pick summary —</option>
+            ${summaryPool.map(b => `<option value="${escapeHtml(b.id)}" ${b.id === edits.summary_id ? "selected" : ""}>${escapeHtml(b.text.slice(0, 80))}${b.text.length > 80 ? "…" : ""}</option>`).join("")}
+          </select>` : ""}
+      </div>
+    </div>
+  `;
+
+  const skillsHtml = `
+    <div class="ed-section">
+      <h3>Core Competencies (${skillsPicked.length})</h3>
+      ${skillsPicked.map(b => `
+        <div class="ed-bullet">
+          <div class="text">${escapeHtml(b.text)}</div>
+          <button data-action="remove-skill" data-id="${escapeHtml(b.id)}" title="Remove">×</button>
+        </div>`).join("") || "<p style='font-size:12px;color:#888;font-style:italic'>No skills picked.</p>"}
+      ${skillsUnpicked.length ? `
+        <div class="ed-add">
+          <select data-add-target="skill">
+            <option value="">+ Add skill candidate…</option>
+            ${skillsUnpicked.map(b => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.text.slice(0, 100))}${b.text.length > 100 ? "…" : ""}</option>`).join("")}
+          </select>
+          <button data-action="add-skill">Add</button>
+        </div>` : ""}
+    </div>
+  `;
+
+  const rolesHtml = view.roles.map(roleView => {
+    const roleEdit = findRoleInEdits(roleView.key);
+    const removed = !roleEdit;
+    const allHighlights = roleView.highlights_picked.concat(roleView.highlights_unpicked);
+    const pickedIds = new Set(roleEdit ? roleEdit.highlight_ids : []);
+    const pickedBullets = roleEdit
+      ? roleEdit.highlight_ids.map(id => allHighlights.find(b => b.id === id)).filter(Boolean)
+      : [];
+    const unpickedBullets = allHighlights.filter(b => !pickedIds.has(b.id));
+    return `
+      <div class="ed-role ${removed ? "removed" : ""}">
+        <div class="ed-role-head">
+          <div class="title">
+            ${escapeHtml(roleView.position)}
+            <span class="meta">— ${escapeHtml(roleView.company)} · ${escapeHtml(roleView.start_date)} – ${escapeHtml(roleView.end_date)}</span>
+          </div>
+          ${removed
+            ? `<button data-action="restore-role" data-role="${escapeHtml(roleView.key)}">Restore role</button>`
+            : `<button class="danger" data-action="remove-role" data-role="${escapeHtml(roleView.key)}">Drop role</button>`}
+        </div>
+        ${removed ? "" : pickedBullets.map(b => `
+          <div class="ed-bullet">
+            <div class="text">${escapeHtml(b.text)}</div>
+            <button data-action="remove-highlight" data-role="${escapeHtml(roleView.key)}" data-id="${escapeHtml(b.id)}" title="Remove bullet">×</button>
+          </div>`).join("")}
+        ${(!removed && unpickedBullets.length) ? `
+          <div class="ed-add">
+            <select data-add-target="highlight" data-role="${escapeHtml(roleView.key)}">
+              <option value="">+ Add bullet from this role's pool…</option>
+              ${unpickedBullets.map(b => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.text.slice(0, 100))}${b.text.length > 100 ? "…" : ""}</option>`).join("")}
+            </select>
+            <button data-action="add-highlight" data-role="${escapeHtml(roleView.key)}">Add</button>
+          </div>` : ""}
+      </div>
+    `;
+  }).join("");
+
+  cellModalBody.innerHTML = banner + summaryHtml + skillsHtml +
+    `<div class="ed-section"><h3>Experience</h3>${rolesHtml}</div>`;
+}
+
+cellModalBody.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-action]");
+  if (!t || !cellState.edits) return;
+  const action = t.dataset.action;
+  const edits = cellState.edits;
+  if (action === "remove-skill") {
+    edits.skill_ids = edits.skill_ids.filter(id => id !== t.dataset.id);
+    renderCellBody();
+  } else if (action === "add-skill") {
+    const sel = cellModalBody.querySelector('select[data-add-target="skill"]');
+    if (!sel || !sel.value) return;
+    if (!edits.skill_ids.includes(sel.value)) edits.skill_ids.push(sel.value);
+    renderCellBody();
+  } else if (action === "remove-highlight") {
+    const role = findRoleInEdits(t.dataset.role);
+    if (!role) return;
+    role.highlight_ids = role.highlight_ids.filter(id => id !== t.dataset.id);
+    renderCellBody();
+  } else if (action === "add-highlight") {
+    const role = findRoleInEdits(t.dataset.role);
+    const sel = cellModalBody.querySelector(`select[data-add-target="highlight"][data-role="${t.dataset.role}"]`);
+    if (!role || !sel || !sel.value) return;
+    if (!role.highlight_ids.includes(sel.value)) role.highlight_ids.push(sel.value);
+    renderCellBody();
+  } else if (action === "remove-role") {
+    edits.roles = edits.roles.filter(r => r.key !== t.dataset.role);
+    renderCellBody();
+  } else if (action === "restore-role") {
+    const roleView = findRoleInView(t.dataset.role);
+    if (!roleView) return;
+    edits.roles.push({
+      key: roleView.key, position: roleView.position, company: roleView.company,
+      start_date: roleView.start_date, end_date: roleView.end_date, location: roleView.location,
+      highlight_ids: roleView.highlights_picked.map(b => b.id),
+    });
+    const orderKeys = cellState.view.roles.map(r => r.key);
+    edits.roles.sort((a, b) => orderKeys.indexOf(a.key) - orderKeys.indexOf(b.key));
+    renderCellBody();
+  }
+});
+
+cellModalBody.addEventListener("change", (e) => {
+  if (e.target.dataset.action === "set-summary") {
+    cellState.edits.summary_id = e.target.value || null;
+    renderCellBody();
+  }
+});
+
+cellModalResetBtn.addEventListener("click", async () => {
+  if (!confirm("Reset this cell to the seed JD's auto-pick? Your edits will be lost.")) return;
+  cellModalBody.innerHTML = "<em>Re-ranking from seed JD…</em>";
+  await loadCellComposition();
+});
+
+cellModalRenderBtn.addEventListener("click", async () => {
+  if (!cellState.edits) return;
+  const variant = cellState.target.variant || "leadership";
+  cellModalRenderBtn.disabled = true;
+  cellModalResetBtn.disabled = true;
+  cellModalResult.classList.remove("err");
+  cellModalResult.textContent = "Rendering…";
+  try {
+    const includePhoto = document.getElementById("cellIncludePhoto").checked;
+    cellState.edits.include_photo = includePhoto;
+    const res = await fetch("/api/tailor_pdf_from_edits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        company: "Library",
+        title: cellState.target.key,
+        variant: variant,
+        include_photo: includePhoto,
+        edits: cellState.edits,
+      }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      cellModalResult.classList.add("err");
+      cellModalResult.textContent = data.error;
+      return;
+    }
+    pdfByName.set(data.filename, data);
+    renderGrid();
+    cellModalResult.innerHTML = `Saved: <a href="${escapeHtml(data.url)}" target="_blank">${escapeHtml(data.filename)}</a> · ${(data.size_bytes/1024).toFixed(0)} KB`;
+  } catch (e) {
+    cellModalResult.classList.add("err");
+    cellModalResult.textContent = "Network error: " + e.message;
+  } finally {
+    cellModalRenderBtn.disabled = false;
+    cellModalResetBtn.disabled = false;
+  }
+});
+
+init();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Paste JD — Tailor resume</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0; padding: 24px 32px; background: #fafafa; color: #1a1a1a;
+    max-width: 1200px; margin: 0 auto;
+  }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header h1 { margin: 0; font-size: 22px; }
+  header .meta { color: #666; font-size: 13px; }
+  header a { color: #6b46c1; text-decoration: none; font-size: 13px;
+             border: 1px solid #6b46c1; padding: 6px 10px; border-radius: 4px; }
+  header a:hover { background: #6b46c1; color: white; }
+  .panel {
+    background: white; border: 1px solid #e5e5e5; border-radius: 8px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  label { display: block; font-weight: 600; font-size: 13px; margin: 8px 0 4px; }
+  input[type="text"], textarea, select {
+    width: 100%; box-sizing: border-box; padding: 8px 10px;
+    border: 1px solid #d0d0d0; border-radius: 4px; font-size: 14px;
+    font-family: inherit; background: white;
+  }
+  textarea#jdText { min-height: 220px; font-family: ui-monospace, SF Mono, monospace; font-size: 13px; }
+  button {
+    background: #6b46c1; color: white; border: 1px solid #6b46c1;
+    padding: 10px 16px; border-radius: 4px; font-size: 14px; font-weight: 500;
+    cursor: pointer;
+  }
+  button:hover { background: #553a99; }
+  button:disabled { background: #aaa; border-color: #aaa; cursor: not-allowed; }
+  button.secondary { background: white; color: #555; border: 1px solid #ccc; }
+  button.secondary:hover { background: #eee; }
+  .hint { font-size: 12px; color: #777; margin-top: 4px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 0; }
+  .row > .narrow { flex: 0 0 200px; }
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; background: #222; color: white;
+    padding: 10px 16px; border-radius: 4px; font-size: 13px;
+    opacity: 0; transition: opacity 0.2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { background: #c0392b; }
+  .recent { font-size: 12px; color: #555; margin-top: 12px; }
+  .recent a { color: #6b46c1; text-decoration: none; }
+
+  /* ---- Editable composition view (shared style with the modal) ---- */
+  .ed-banner {
+    background: #f7f4ff; border: 1px solid #d8d0ec; border-radius: 6px;
+    padding: 10px 14px; font-size: 13px; margin-bottom: 14px;
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  }
+  .ed-banner strong { color: #4a2d96; }
+  .ed-banner .variant-tabs { display: flex; gap: 4px; margin-left: auto; }
+  .ed-banner .variant-tabs button {
+    background: white; color: #555; border: 1px solid #ccc;
+    padding: 3px 9px; font-size: 12px; border-radius: 4px; cursor: pointer;
+  }
+  .ed-banner .variant-tabs button.active {
+    background: #6b46c1; color: white; border-color: #6b46c1;
+  }
+  .ed-section { margin: 14px 0; }
+  .ed-section h3 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: #6b46c1; margin: 14px 0 6px; border-bottom: 1px solid #e8e2f5;
+    padding-bottom: 4px;
+  }
+  .ed-bullet {
+    display: flex; gap: 8px; align-items: flex-start;
+    padding: 6px 8px; border-radius: 4px;
+    margin-bottom: 4px; font-size: 13px; line-height: 1.45;
+  }
+  .ed-bullet:hover { background: #f7f5fc; }
+  .ed-bullet .text { flex: 1; }
+  .ed-bullet button {
+    background: transparent; color: #c0392b; border: 1px solid transparent;
+    font-size: 16px; line-height: 1; padding: 0 6px; cursor: pointer;
+    border-radius: 3px;
+  }
+  .ed-bullet:hover button { border-color: #f4d4cf; }
+  .ed-bullet button:hover { background: #f8d7d4; }
+  .ed-role {
+    border: 1px solid #e8e2f5; border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 10px;
+  }
+  .ed-role.removed { opacity: 0.45; background: #f5f3fa; }
+  .ed-role-head {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 6px;
+  }
+  .ed-role-head .title {
+    flex: 1; font-weight: 600; font-size: 13px; color: #222;
+  }
+  .ed-role-head .meta {
+    font-size: 12px; color: #666; margin-left: 6px;
+  }
+  .ed-role-head button {
+    background: white; color: #555; border: 1px solid #ccc;
+    padding: 2px 8px; font-size: 12px; border-radius: 4px; cursor: pointer;
+  }
+  .ed-role-head button.danger { color: #c0392b; border-color: #f4c4be; }
+  .ed-add {
+    margin-top: 4px; font-size: 12px; display: flex; gap: 6px; align-items: center;
+  }
+  .ed-add select {
+    flex: 1; padding: 4px 6px; font-size: 12px;
+    border: 1px solid #ccc; border-radius: 4px; background: white;
+  }
+  .ed-add button {
+    background: #6b46c1; color: white; border: 1px solid #6b46c1;
+    padding: 3px 10px; font-size: 12px; border-radius: 4px; cursor: pointer;
+  }
+  .ed-add button:hover { background: #553a99; }
+  .ed-summary-card {
+    background: #fcfbff; border: 1px solid #e8e2f5; border-radius: 6px;
+    padding: 10px 12px; font-size: 13px; line-height: 1.5;
+    display: flex; gap: 8px; align-items: flex-start;
+  }
+  .ed-summary-card.empty { color: #888; font-style: italic; }
+  .ed-summary-card .text { flex: 1; }
+  .ed-summary-card select {
+    font-size: 12px; padding: 4px; border: 1px solid #ccc; border-radius: 4px;
+    background: white; max-width: 280px;
+  }
+  .render-row {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    margin-top: 14px; padding-top: 14px; border-top: 1px solid #eee;
+  }
+  .render-row .variant-render-btn { flex: 1; min-width: 140px; }
+  .render-row .variant-render-btn.metrics { background: #6b46c1; border-color: #6b46c1; }
+  .render-row .variant-render-btn.leadership { background: #2a8a9c; border-color: #2a8a9c; }
+  .render-row .variant-render-btn.tooling { background: #c98c2e; border-color: #c98c2e; }
+  .render-results {
+    margin-top: 12px; padding: 10px 14px; background: #f9f8fd;
+    border: 1px solid #d8d0ec; border-radius: 6px; font-size: 12px;
+  }
+  .render-results a { color: #6b46c1; }
+  .render-results .err { color: #c0392b; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Paste JD → tailored PDFs</h1>
+  <span class="meta">Pure local retrieval — no API calls.</span>
+  <span style="margin-left:auto"></span>
+  <a href="/library">Library</a>
+  <a href="/">← Back to job finder</a>
+</header>
+
+<div class="panel">
+  <div class="row">
+    <div>
+      <label for="company">Company</label>
+      <input type="text" id="company" placeholder="Acme GmbH">
+    </div>
+    <div>
+      <label for="title">Job title</label>
+      <input type="text" id="title" placeholder="Senior IT Portfolio Manager">
+    </div>
+    <div class="narrow">
+      <label for="headerKey">Header variant</label>
+      <select id="headerKey"><option value="">— loading —</option></select>
+      <div class="hint" id="headerHint"></div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <label style="display:inline-flex;gap:6px;align-items:center;font-weight:500;font-size:13px;cursor:pointer;flex:0 0 auto">
+      <input type="checkbox" id="includePhoto" checked>
+      Include photo
+    </label>
+    <span class="hint" style="margin-top:0">EU/Asia headers usually include · US/UK omit.</span>
+  </div>
+  <label for="jdText" style="margin-top:14px">Job description</label>
+  <textarea id="jdText" placeholder="Paste the full job description. The engine matches bullets against keywords like portfolio, governance, ServiceNow, transformation, steering, RAID, etc."></textarea>
+  <div class="hint" id="jdHint">0 chars</div>
+  <div class="row" style="margin-top:14px">
+    <button id="btnBuild">Build editable composition →</button>
+    <span id="status" style="color:#666;font-size:13px"></span>
+  </div>
+</div>
+
+<div class="panel" id="compositionPanel" style="display:none">
+  <div id="compositionBody"><em>Loading…</em></div>
+  <div class="render-row">
+    <button class="variant-render-btn metrics" data-variant="metrics">Render Metrics PDF</button>
+    <button class="variant-render-btn leadership" data-variant="leadership">Render Leadership PDF</button>
+    <button class="variant-render-btn tooling" data-variant="tooling">Render Tooling PDF</button>
+  </div>
+  <div class="render-results" id="renderResults" style="display:none"></div>
+</div>
+
+<div class="panel">
+  <strong style="font-size:13px">Recent PDFs</strong>
+  <div id="recent" class="recent">Loading…</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const toastEl = document.getElementById("toast");
+function showToast(msg, err) {
+  toastEl.textContent = msg;
+  toastEl.classList.toggle("error", !!err);
+  toastEl.classList.add("show");
+  setTimeout(() => toastEl.classList.remove("show"), 2400);
+}
+
+function escapeHtml(s) {
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+const jdEl = document.getElementById("jdText");
+const jdHint = document.getElementById("jdHint");
+const companyEl = document.getElementById("company");
+const titleEl = document.getElementById("title");
+const headerKeyEl = document.getElementById("headerKey");
+const headerHintEl = document.getElementById("headerHint");
+const statusEl = document.getElementById("status");
+const compositionPanel = document.getElementById("compositionPanel");
+const compositionBody = document.getElementById("compositionBody");
+const renderResults = document.getElementById("renderResults");
+
+let headerVariants = {};
+let state = { view: null, edits: null, currentVariant: "metrics" };
+
+jdEl.addEventListener("input", () => {
+  jdHint.textContent = `${jdEl.value.length} chars`;
+});
+
+async function loadHeaderVariants() {
+  try {
+    const res = await fetch("/api/header_variants");
+    const data = await res.json();
+    headerVariants = data.variants || {};
+    const keys = Object.keys(headerVariants);
+    if (!keys.length) {
+      headerKeyEl.innerHTML = '<option value="">(none — define in master.md)</option>';
+      return;
+    }
+    const defaultKey = data.default || keys[0];
+    headerKeyEl.innerHTML = keys.map(k =>
+      `<option value="${escapeHtml(k)}" ${k === defaultKey ? "selected" : ""}>${escapeHtml(k)}</option>`
+    ).join("");
+    updateHeaderHint();
+  } catch (e) {
+    headerKeyEl.innerHTML = '<option value="">(could not load)</option>';
+  }
+}
+function updateHeaderHint() {
+  const k = headerKeyEl.value;
+  const h = headerVariants[k];
+  if (!h) { headerHintEl.textContent = ""; return; }
+  headerHintEl.innerHTML = `<strong>${escapeHtml(h.headline || "")}</strong><br>` +
+    `<span style="color:#666">${escapeHtml(h.location || "")}</span>`;
+}
+headerKeyEl.addEventListener("change", () => {
+  updateHeaderHint();
+  if (state.edits) {
+    state.edits.header_key = headerKeyEl.value || "germany";
+    renderComposition();
+  }
+});
+loadHeaderVariants();
+
+// ---- Build / load composition ----
+document.getElementById("btnBuild").addEventListener("click", () => loadVariant("metrics", false));
+
+async function loadVariant(variantKey, fromTab) {
+  const jd = jdEl.value.trim();
+  if (jd.length < 20) {
+    showToast("Paste a JD first (at least a paragraph)", true);
+    return;
+  }
+  if (fromTab && !confirm(`Re-ranking for '${variantKey}' will discard your manual edits. Continue?`)) return;
+  statusEl.textContent = "Ranking bullets locally…";
+  try {
+    const res = await fetch("/api/tailor_view_freeform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jd_text: jd,
+        company: companyEl.value.trim(),
+        title: titleEl.value.trim(),
+        variant: variantKey,
+      }),
+    });
+    const data = await res.json();
+    statusEl.textContent = "";
+    if (data.error) {
+      showToast(data.error, true);
+      return;
+    }
+    state.view = data.view;
+    state.currentVariant = variantKey;
+    state.edits = editsFromView(data.view);
+    if (headerKeyEl.value) state.edits.header_key = headerKeyEl.value;
+    compositionPanel.style.display = "block";
+    renderResults.style.display = "none";
+    renderResults.innerHTML = "";
+    renderComposition();
+  } catch (e) {
+    statusEl.textContent = "";
+    showToast("Network error: " + e.message, true);
+  }
+}
+
+function editsFromView(view) {
+  return {
+    profile: view.profile,
+    profile_label: view.profile_label,
+    header_key: view.default_header_key || "germany",
+    include_photo: document.getElementById("includePhoto").checked,
+    summary_id: (view.summary.picked[0] && view.summary.picked[0].id) || null,
+    skill_ids: view.skills.picked.map(b => b.id),
+    roles: view.roles.map(r => ({
+      key: r.key, position: r.position, company: r.company,
+      start_date: r.start_date, end_date: r.end_date, location: r.location,
+      highlight_ids: r.highlights_picked.map(b => b.id),
+    })),
+  };
+}
+
+function findRoleInView(roleKey) { return state.view.roles.find(r => r.key === roleKey); }
+function findRoleInEdits(roleKey) { return state.edits.roles.find(r => r.key === roleKey); }
+
+function renderComposition() {
+  const view = state.view, edits = state.edits;
+  if (!view || !edits) return;
+  const summaryPool = view.summary.picked.concat(view.summary.unpicked);
+  const summaryCurrent = summaryPool.find(b => b.id === edits.summary_id);
+  const skillsAll = view.skills.picked.concat(view.skills.unpicked);
+  const skillsPickedIds = new Set(edits.skill_ids);
+  const skillsPicked = edits.skill_ids.map(id => skillsAll.find(b => b.id === id)).filter(Boolean);
+  const skillsUnpicked = skillsAll.filter(b => !skillsPickedIds.has(b.id));
+
+  const banner = `
+    <div class="ed-banner">
+      <div>
+        <strong>Detected profile:</strong> ${escapeHtml(view.profile_label)}
+        ${view.runner_up_profile ? `<span style="color:#888">· runner-up: ${escapeHtml(view.runner_up_profile)}</span>` : ""}
+      </div>
+      <div class="variant-tabs">
+        ${view.available_variants.map(v =>
+          `<button data-variant="${escapeHtml(v.key)}" class="${state.currentVariant === v.key ? "active" : ""}">${escapeHtml(v.label)}</button>`
+        ).join("")}
+      </div>
+    </div>
+    <div style="font-size:12px;color:#666;margin-bottom:10px">
+      Header variant lives in the top form. Variant tabs re-rank from scratch and
+      <strong style="color:#c0392b">discard your manual edits</strong>.
+      Use × / + Add to refine. The three Render buttons at the bottom each save a
+      PDF labelled with that variant tag.
+    </div>
+  `;
+
+  const summaryHtml = `
+    <div class="ed-section">
+      <h3>Summary</h3>
+      <div class="ed-summary-card ${summaryCurrent ? "" : "empty"}">
+        <div class="text">${summaryCurrent ? escapeHtml(summaryCurrent.text) : "No summary picked. Choose one →"}</div>
+        ${summaryPool.length > 1 ? `
+          <select data-action="set-summary">
+            <option value="">— pick summary —</option>
+            ${summaryPool.map(b =>
+              `<option value="${escapeHtml(b.id)}" ${b.id === edits.summary_id ? "selected" : ""}>${escapeHtml(b.text.slice(0, 80))}${b.text.length > 80 ? "…" : ""}</option>`
+            ).join("")}
+          </select>` : ""}
+      </div>
+    </div>
+  `;
+
+  const skillsHtml = `
+    <div class="ed-section">
+      <h3>Core Competencies (${skillsPicked.length})</h3>
+      ${skillsPicked.map(b => `
+        <div class="ed-bullet">
+          <div class="text">${escapeHtml(b.text)}</div>
+          <button data-action="remove-skill" data-id="${escapeHtml(b.id)}" title="Remove">×</button>
+        </div>`).join("") || "<p style='font-size:12px;color:#888;font-style:italic'>No skills picked.</p>"}
+      ${skillsUnpicked.length ? `
+        <div class="ed-add">
+          <select data-add-target="skill">
+            <option value="">+ Add skill candidate…</option>
+            ${skillsUnpicked.map(b => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.text.slice(0, 100))}${b.text.length > 100 ? "…" : ""}</option>`).join("")}
+          </select>
+          <button data-action="add-skill">Add</button>
+        </div>` : ""}
+    </div>
+  `;
+
+  const rolesHtml = view.roles.map(roleView => {
+    const roleEdit = findRoleInEdits(roleView.key);
+    const removed = !roleEdit;
+    const allHighlights = roleView.highlights_picked.concat(roleView.highlights_unpicked);
+    const pickedIds = new Set(roleEdit ? roleEdit.highlight_ids : []);
+    const pickedBullets = roleEdit
+      ? roleEdit.highlight_ids.map(id => allHighlights.find(b => b.id === id)).filter(Boolean)
+      : [];
+    const unpickedBullets = allHighlights.filter(b => !pickedIds.has(b.id));
+    return `
+      <div class="ed-role ${removed ? "removed" : ""}">
+        <div class="ed-role-head">
+          <div class="title">
+            ${escapeHtml(roleView.position)}
+            <span class="meta">— ${escapeHtml(roleView.company)} · ${escapeHtml(roleView.start_date)} – ${escapeHtml(roleView.end_date)}</span>
+          </div>
+          ${removed
+            ? `<button data-action="restore-role" data-role="${escapeHtml(roleView.key)}">Restore role</button>`
+            : `<button class="danger" data-action="remove-role" data-role="${escapeHtml(roleView.key)}">Drop role</button>`}
+        </div>
+        ${removed ? "" : pickedBullets.map(b => `
+          <div class="ed-bullet">
+            <div class="text">${escapeHtml(b.text)}</div>
+            <button data-action="remove-highlight" data-role="${escapeHtml(roleView.key)}" data-id="${escapeHtml(b.id)}" title="Remove bullet">×</button>
+          </div>`).join("")}
+        ${(!removed && unpickedBullets.length) ? `
+          <div class="ed-add">
+            <select data-add-target="highlight" data-role="${escapeHtml(roleView.key)}">
+              <option value="">+ Add bullet from this role's pool…</option>
+              ${unpickedBullets.map(b => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.text.slice(0, 100))}${b.text.length > 100 ? "…" : ""}</option>`).join("")}
+            </select>
+            <button data-action="add-highlight" data-role="${escapeHtml(roleView.key)}">Add</button>
+          </div>` : ""}
+      </div>
+    `;
+  }).join("");
+
+  compositionBody.innerHTML = banner + summaryHtml + skillsHtml +
+    `<div class="ed-section"><h3>Experience</h3>${rolesHtml}</div>`;
+}
+
+// ---- Event delegation for the editable composition ----
+compositionBody.addEventListener("click", (e) => {
+  const variantTab = e.target.closest(".ed-banner .variant-tabs button");
+  if (variantTab) {
+    loadVariant(variantTab.dataset.variant, true);
+    return;
+  }
+  const t = e.target.closest("[data-action]");
+  if (!t || !state.edits) return;
+  const action = t.dataset.action;
+  const edits = state.edits;
+  if (action === "remove-skill") {
+    edits.skill_ids = edits.skill_ids.filter(id => id !== t.dataset.id);
+    renderComposition();
+  } else if (action === "add-skill") {
+    const sel = compositionBody.querySelector('select[data-add-target="skill"]');
+    if (!sel || !sel.value) return;
+    if (!edits.skill_ids.includes(sel.value)) edits.skill_ids.push(sel.value);
+    renderComposition();
+  } else if (action === "remove-highlight") {
+    const role = findRoleInEdits(t.dataset.role);
+    if (!role) return;
+    role.highlight_ids = role.highlight_ids.filter(id => id !== t.dataset.id);
+    renderComposition();
+  } else if (action === "add-highlight") {
+    const role = findRoleInEdits(t.dataset.role);
+    const sel = compositionBody.querySelector(`select[data-add-target="highlight"][data-role="${t.dataset.role}"]`);
+    if (!role || !sel || !sel.value) return;
+    if (!role.highlight_ids.includes(sel.value)) role.highlight_ids.push(sel.value);
+    renderComposition();
+  } else if (action === "remove-role") {
+    edits.roles = edits.roles.filter(r => r.key !== t.dataset.role);
+    renderComposition();
+  } else if (action === "restore-role") {
+    const roleView = findRoleInView(t.dataset.role);
+    if (!roleView) return;
+    edits.roles.push({
+      key: roleView.key, position: roleView.position, company: roleView.company,
+      start_date: roleView.start_date, end_date: roleView.end_date, location: roleView.location,
+      highlight_ids: roleView.highlights_picked.map(b => b.id),
+    });
+    const orderKeys = state.view.roles.map(r => r.key);
+    edits.roles.sort((a, b) => orderKeys.indexOf(a.key) - orderKeys.indexOf(b.key));
+    renderComposition();
+  }
+});
+
+compositionBody.addEventListener("change", (e) => {
+  const action = e.target.dataset.action;
+  if (action === "set-summary") {
+    state.edits.summary_id = e.target.value || null;
+    renderComposition();
+  }
+});
+
+// ---- Render PDF buttons ----
+document.querySelectorAll(".variant-render-btn").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    if (!state.edits) return showToast("Build the composition first", true);
+    const variant = btn.dataset.variant;
+    const all = document.querySelectorAll(".variant-render-btn");
+    all.forEach(b => b.disabled = true);
+    const orig = btn.textContent;
+    btn.textContent = "Rendering…";
+    renderResults.style.display = "block";
+    try {
+      // Keep edits.include_photo in sync with the live checkbox so toggling
+      // after the composition is built still takes effect.
+      state.edits.include_photo = document.getElementById("includePhoto").checked;
+      const res = await fetch("/api/tailor_pdf_from_edits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company: companyEl.value.trim() || "Unknown",
+          title: titleEl.value.trim() || "Role",
+          variant: variant,
+          include_photo: state.edits.include_photo,
+          edits: state.edits,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        renderResults.innerHTML += `<div class="err">[${escapeHtml(variant)}] ${escapeHtml(data.error)}</div>`;
+      } else {
+        renderResults.innerHTML += `<div>[${escapeHtml(variant)}] <a href="${escapeHtml(data.url)}" target="_blank">${escapeHtml(data.filename)}</a> · ${(data.size_bytes/1024).toFixed(0)} KB</div>`;
+        loadRecent();
+      }
+    } catch (e) {
+      renderResults.innerHTML += `<div class="err">[${escapeHtml(variant)}] network error: ${escapeHtml(e.message)}</div>`;
+    } finally {
+      all.forEach(b => b.disabled = false);
+      btn.textContent = orig;
+    }
+  });
+});
+
+// ---- Recent PDFs list ----
+async function loadRecent() {
+  try {
+    const res = await fetch("/api/tailored");
+    const data = await res.json();
+    const list = (data.pdfs || []).slice(0, 14);
+    if (!list.length) {
+      document.getElementById("recent").innerHTML = "<em>No PDFs generated yet.</em>";
+      return;
+    }
+    document.getElementById("recent").innerHTML = list.map(p =>
+      `<div><a href="${escapeHtml(p.url)}" target="_blank">${escapeHtml(p.filename)}</a> <span style="color:#999">${(p.size_bytes/1024).toFixed(0)} KB</span></div>`
+    ).join("");
+  } catch (e) {
+    document.getElementById("recent").textContent = "Could not load recent list.";
+  }
+}
+loadRecent();
+</script>
+
+</body>
+</html>

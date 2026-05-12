@@ -39,6 +39,13 @@ from tailor.retrieval import build_all_variants, load_corpus, load_profiles  # n
 HERE = Path(__file__).resolve().parent.parent
 TAILORED_DIR = HERE / "results" / "tailored"
 RENDERCV_BIN = HERE / ".venv" / "bin" / "rendercv"
+ASSETS_DIR = HERE / "assets"
+PHOTO_CANDIDATES = [
+    ASSETS_DIR / "photo.jpg",
+    ASSETS_DIR / "photo.jpeg",
+    ASSETS_DIR / "photo.png",
+]
+SQUARE_PHOTO_CACHE = ASSETS_DIR / ".cache_photo_square.jpg"
 
 
 # Round-trip mode (default) preserves dict insertion order. The 'safe' typ
@@ -94,6 +101,9 @@ def build_rendercv_yaml(tailored: dict) -> dict:
         "social_networks": _social_networks(h),
         "sections": {},
     }
+    photo_path = find_photo()
+    if photo_path:
+        cv["photo"] = str(photo_path)
     if tailored.get("profile_label"):
         cv["headline"] = h.get("headline", "") or "Senior IT Project & Portfolio Manager"
     elif h.get("headline"):
@@ -165,6 +175,12 @@ def build_rendercv_yaml(tailored: dict) -> dict:
                 "connections": {
                     "phone_number_format": "international",
                 },
+                # Photo lives in the top right corner of the header band.
+                # photo_width is the rendered size; the source is pre-cropped
+                # to a square so it shows up as a clean tile, not a strip.
+                **({"photo_position": "right", "photo_width": "3cm",
+                    "photo_space_left": "0.4cm", "photo_space_right": "0cm"}
+                   if photo_path else {}),
             },
         },
         "locale": {"language": "english"},
@@ -173,6 +189,44 @@ def build_rendercv_yaml(tailored: dict) -> dict:
             "pdf_title": f"{h.get('name', 'CV')} - CV",
         },
     }
+
+
+def find_photo() -> Path | None:
+    """Locate a source photo in assets/ and return a cached, square-cropped
+    copy ready for RenderCV. Returns None if no photo is configured.
+
+    The original portrait is left untouched. The cache is invalidated when
+    the source mtime is newer than the cache mtime.
+    """
+    source = next((p for p in PHOTO_CANDIDATES if p.exists()), None)
+    if not source:
+        return None
+    try:
+        from PIL import Image
+    except ImportError:
+        return None
+    try:
+        # Reuse cache only if source hasn't been replaced since.
+        if SQUARE_PHOTO_CACHE.exists() and SQUARE_PHOTO_CACHE.stat().st_mtime >= source.stat().st_mtime:
+            return SQUARE_PHOTO_CACHE
+        with Image.open(source) as img:
+            img = img.convert("RGB")
+            w, h = img.size
+            side = min(w, h)
+            # Center crop horizontally; bias the vertical crop UP so the face
+            # (typically in the upper third of a portrait) stays in frame.
+            left = (w - side) // 2
+            top = max(0, int((h - side) * 0.18))
+            box = (left, top, left + side, top + side)
+            cropped = img.crop(box)
+            # 600 px is plenty for a 3 cm CV photo at print DPI.
+            if side > 600:
+                cropped = cropped.resize((600, 600), Image.LANCZOS)
+            SQUARE_PHOTO_CACHE.parent.mkdir(parents=True, exist_ok=True)
+            cropped.save(SQUARE_PHOTO_CACHE, "JPEG", quality=88, optimize=True)
+        return SQUARE_PHOTO_CACHE
+    except Exception:
+        return None
 
 
 def _split_phones(text: str) -> tuple[str | None, list[str]]:

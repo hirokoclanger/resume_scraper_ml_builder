@@ -11,6 +11,9 @@ results/
 source_catalog.txt
 corpus/
 
+# Headshot / personal photos used in rendered CVs
+assets/
+
 # Python
 __pycache__/
 *.py[cod]

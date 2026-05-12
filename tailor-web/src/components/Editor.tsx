@@ -113,11 +113,27 @@ export function Editor({ view, edits, setEdits, headerVariants, onCustomBulletSa
           .filter(Boolean) as { id: string; text: string }[];
         const unpicked = allHl.filter((b) => !pickedIds.has(b.id));
 
+        const titleShown = (re?.position_override?.trim()) || rv.position;
+        const titleOverridden = !!(re?.position_override?.trim());
         return (
           <div key={rv.key} className={`border rounded p-3 ${removed ? "opacity-50 bg-gray-50" : ""}`}>
             <div className="flex justify-between items-start gap-2 mb-2">
-              <div className="text-sm">
-                <strong>{rv.position}</strong>
+              <div className="text-sm flex-1">
+                <RoleTitle
+                  shown={titleShown}
+                  original={rv.position}
+                  overridden={titleOverridden}
+                  editable={!removed}
+                  onChange={(next) => {
+                    setEdits({
+                      ...edits,
+                      roles: edits.roles.map((r) =>
+                        r.key === rv.key
+                          ? { ...r, position_override: next === rv.position ? "" : next }
+                          : r),
+                    });
+                  }}
+                />
                 <div className="text-xs text-gray-500">{rv.company} · {rv.start_date} – {rv.end_date}</div>
               </div>
               {removed ? (
@@ -128,6 +144,7 @@ export function Editor({ view, edits, setEdits, headerVariants, onCustomBulletSa
                       ...edits,
                       roles: [...edits.roles, {
                         key: rv.key,
+                        position_override: "",
                         highlight_ids: rv.highlights_picked.map((b) => b.id),
                         custom_highlights: [],
                       }].sort((a, b) => {
@@ -194,6 +211,50 @@ export function Editor({ view, edits, setEdits, headerVariants, onCustomBulletSa
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function RoleTitle({ shown, original, overridden, editable, onChange }: {
+  shown: string; original: string; overridden: boolean; editable: boolean;
+  onChange: (next: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(shown);
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1 mb-1">
+        <input
+          autoFocus
+          className="flex-1 border rounded px-2 py-0.5 text-sm font-semibold"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { onChange(draft.trim() || original); setEditing(false); }
+            if (e.key === "Escape") { setEditing(false); setDraft(shown); }
+          }}
+        />
+        <button className="text-xs px-2 py-0.5 bg-purple-600 text-white rounded"
+                onClick={() => { onChange(draft.trim() || original); setEditing(false); }}>save</button>
+        <button className="text-xs px-2 py-0.5 border rounded"
+                onClick={() => { setEditing(false); setDraft(shown); onChange(original); }}>reset</button>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1 mb-1">
+      <strong>{shown}</strong>
+      {overridden && (
+        <span title="Renamed for this CV only — master keeps the real role title"
+              className="text-green-600 text-xs">●</span>
+      )}
+      {editable && (
+        <button
+          className="text-xs text-gray-400 hover:text-purple-600 px-1"
+          title="Rename title for this CV only"
+          onClick={() => { setDraft(shown); setEditing(true); }}
+        >✏</button>
+      )}
     </div>
   );
 }

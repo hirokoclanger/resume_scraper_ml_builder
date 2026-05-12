@@ -530,6 +530,12 @@ function editsFromView(view) {
     roles: view.roles.map(r => ({
       key: r.key, position: r.position, company: r.company,
       start_date: r.start_date, end_date: r.end_date, location: r.location,
+      // position_override: per-render only — never persists. Lets the
+      // user re-frame a role title (e.g. "Product Owner ServiceNow")
+      // when the listing's title differs from the canonical role title.
+      // Keeps Philipp's history defensible (the underlying role is real)
+      // while ranking higher on exact-title-match ATS filters.
+      position_override: "",
       highlight_ids: r.highlights_picked.map(b => b.id),
       custom_highlights: [], // free-typed bullets (use-here-only)
     })),
@@ -691,11 +697,16 @@ function renderComposition() {
       ? roleEdit.highlight_ids.map(id => allHighlights.find(b => b.id === id)).filter(Boolean)
       : [];
     const unpickedBullets = allHighlights.filter(b => !pickedIds.has(b.id));
+    const positionShown = (roleEdit && roleEdit.position_override) || roleView.position;
+    const titleOverridden = !!(roleEdit && roleEdit.position_override);
     return `
       <div class="ed-role ${removed ? "removed" : ""}">
         <div class="ed-role-head">
-          <div class="title">
-            ${escapeHtml(roleView.position)}
+          <div class="title" data-role-title="${escapeHtml(roleView.key)}">
+            <span class="title-text">${escapeHtml(positionShown)}</span>
+            ${titleOverridden ? `<span title="Renamed for this CV only — master keeps the real role title" style="color:#2e9c52;font-size:11px;margin-left:4px">●</span>` : ""}
+            ${!removed ? `<button data-action="edit-title" data-role="${escapeHtml(roleView.key)}" title="Rename title for this CV only"
+                                  style="background:transparent;border:1px solid transparent;font-size:11px;padding:1px 5px;color:#888;cursor:pointer">✏</button>` : ""}
             <span class="meta">— ${escapeHtml(roleView.company)} · ${escapeHtml(roleView.start_date)} – ${escapeHtml(roleView.end_date)}</span>
           </div>
           ${removed
@@ -771,12 +782,28 @@ compositionBody.addEventListener("click", (e) => {
     edits.roles.push({
       key: roleView.key, position: roleView.position, company: roleView.company,
       start_date: roleView.start_date, end_date: roleView.end_date, location: roleView.location,
+      position_override: "",
       highlight_ids: roleView.highlights_picked.map(b => b.id),
       custom_highlights: [],
     });
     const orderKeys = state.view.roles.map(r => r.key);
     edits.roles.sort((a, b) => orderKeys.indexOf(a.key) - orderKeys.indexOf(b.key));
     renderComposition();
+  } else if (action === "edit-title") {
+    const role = findRoleInEdits(t.dataset.role);
+    const roleView = findRoleInView(t.dataset.role);
+    if (!role || !roleView) return;
+    const current = role.position_override || roleView.position;
+    const next = window.prompt(
+      "Rewrite the title for THIS CV only (master file is not changed).\n\n" +
+      "Be honest — the underlying role must still defensibly support the new title.\n" +
+      `Original: ${roleView.position}`,
+      current,
+    );
+    if (next === null) return;
+    role.position_override = next.trim() === roleView.position.trim() ? "" : next.trim();
+    renderComposition();
+    scheduleCoverageRefresh();
   } else if (action === "free-add-skill") {
     const input = compositionBody.querySelector('input[data-free-type="skill"]');
     if (!input) return;

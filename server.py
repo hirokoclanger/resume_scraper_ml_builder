@@ -9,6 +9,29 @@ The server runs background scrape and score subprocesses on demand and
 streams logs back to the dashboard. All endpoints are local-only — bound
 to 127.0.0.1.
 """
+# --- venv bootstrap ---------------------------------------------------------
+# The tailor engine needs python-docx, rank_bm25, ruamel.yaml, and rendercv,
+# all installed into ./.venv. If the user runs `python3 server.py` with the
+# system Python (which is what most terminals default to), the imports below
+# would fail. Re-exec through the venv interpreter automatically.
+#
+# Detection: `.venv/bin/python` is a symlink to the system python, so
+# `Path.resolve()` collapses them. The reliable signal is `sys.prefix`,
+# which points to the venv root only when the venv's python was invoked.
+import os as _os
+import sys as _sys
+from pathlib import Path as _Path
+_HERE = _Path(__file__).resolve().parent
+_VENV_DIR = _HERE / ".venv"
+_VENV_PY = _VENV_DIR / "bin" / "python"
+if (
+    _VENV_PY.exists()
+    and not _os.environ.get("JOB_FINDER_SKIP_VENV_BOOTSTRAP")
+    and _Path(_sys.prefix).resolve() != _VENV_DIR.resolve()
+):
+    _os.environ["JOB_FINDER_SKIP_VENV_BOOTSTRAP"] = "1"  # prevent re-exec loops
+    _os.execv(str(_VENV_PY), [str(_VENV_PY), str(_Path(__file__).resolve()), *_sys.argv[1:]])
+# ---------------------------------------------------------------------------
 import http.server
 import json
 import os

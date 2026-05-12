@@ -9,6 +9,21 @@ Outputs:
   results/fitting_jobs.xlsx  — Excel of jobs scoring >= MIN_EXCEL_SCORE
   dashboard.html             — live HTML dashboard with new data baked in
 """
+# --- venv bootstrap (same pattern as server.py) -----------------------------
+import os as _os
+import sys as _sys
+from pathlib import Path as _Path
+_HERE = _Path(__file__).resolve().parent
+_VENV_DIR = _HERE / ".venv"
+_VENV_PY = _VENV_DIR / "bin" / "python"
+if (
+    _VENV_PY.exists()
+    and not _os.environ.get("JOB_FINDER_SKIP_VENV_BOOTSTRAP")
+    and _Path(_sys.prefix).resolve() != _VENV_DIR.resolve()
+):
+    _os.environ["JOB_FINDER_SKIP_VENV_BOOTSTRAP"] = "1"
+    _os.execv(str(_VENV_PY), [str(_VENV_PY), str(_Path(__file__).resolve()), *_sys.argv[1:]])
+# ---------------------------------------------------------------------------
 import json
 import re
 import sys
@@ -549,7 +564,7 @@ def write_excel(scored, path):
         from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
         from openpyxl.utils import get_column_letter
     except ImportError:
-        print("openpyxl not installed. Run:  pip3 install openpyxl --break-system-packages")
+        print("openpyxl not installed. Install it once:  .venv/bin/pip install openpyxl")
         return False
 
     wb = Workbook()

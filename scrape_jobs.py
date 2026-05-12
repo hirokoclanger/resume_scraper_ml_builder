@@ -6,9 +6,27 @@ Open source, free, no actor. Location filters actually work.
 Run:  python3 scrape_jobs.py
 Or via the dashboard "Run scrape" button.
 
-Install dependency once:
-  pip3 install python-jobspy --break-system-packages
+Dependencies live in the project's .venv (auto-bootstrapped below). To set up
+once from a fresh clone:
+    python3 -m venv .venv
+    .venv/bin/pip install python-jobspy openpyxl 'rendercv[full]' \\
+        python-docx pdfplumber rank-bm25 markdown-it-py
 """
+# --- venv bootstrap (same pattern as server.py) -----------------------------
+import os as _os
+import sys as _sys
+from pathlib import Path as _Path
+_HERE = _Path(__file__).resolve().parent
+_VENV_DIR = _HERE / ".venv"
+_VENV_PY = _VENV_DIR / "bin" / "python"
+if (
+    _VENV_PY.exists()
+    and not _os.environ.get("JOB_FINDER_SKIP_VENV_BOOTSTRAP")
+    and _Path(_sys.prefix).resolve() != _VENV_DIR.resolve()
+):
+    _os.environ["JOB_FINDER_SKIP_VENV_BOOTSTRAP"] = "1"
+    _os.execv(str(_VENV_PY), [str(_VENV_PY), str(_Path(__file__).resolve()), *_sys.argv[1:]])
+# ---------------------------------------------------------------------------
 import json
 import sys
 import time
@@ -39,9 +57,9 @@ def import_jobspy():
         return scrape_jobs
     except ImportError:
         sys.exit(
-            "ERROR: python-jobspy is not installed.\n"
-            "  Run in Terminal:\n"
-            "    pip3 install python-jobspy --break-system-packages\n"
+            "ERROR: python-jobspy is not installed in the project venv.\n"
+            "  Install it once:\n"
+            "    .venv/bin/pip install python-jobspy\n"
         )
 
 

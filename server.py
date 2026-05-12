@@ -72,6 +72,7 @@ from tailor.retrieval import (  # noqa: E402
     load_profiles,
 )
 from tailor.render_pdf import render_pdf, slugify  # noqa: E402
+from tailor.skills import coverage as skill_coverage, extract_skills  # noqa: E402
 
 # Will be set after server constructed so /api/shutdown can stop it
 _server_ref = None
@@ -370,6 +371,94 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "pdfs": results,
             "total": len(results),
         })
+
+    def _handle_jd_analyze(self, body):
+        """Spec §10 endpoint for the v2 tailored page.
+
+        Given a pasted JD text, return:
+          - Skills demanded by the JD (canonical labels from the registry)
+          - Closest matching role_target (so the page can preselect a mask)
+          - Detected listing title hint (best-effort regex; the page lets
+            the user override)
+          - Optional coverage block when `composition` is supplied — letting
+            the page show live coverage as the user edits without a second
+            round trip
+        """
+        jd_text = body.get("jd_text", "")
+        if not jd_text or len(jd_text.strip()) < 20:
+            self._send_json({"error": "jd_text required (at least a paragraph)"}, status=400)
+            return
+        try:
+            corpus, cfg = self._ensure_corpus()
+        except RuntimeError as e:
+            self._send_json({"error": str(e)}, status=500)
+            return
+
+        jd_skills = extract_skills(jd_text)
+
+        # Closest role target — keyword-overlap score against each target's seed JD.
+        targets = cfg.get("role_targets", [])
+        target_scores: list[tuple[float, dict]] = []
+        for tgt in targets:
+            seed_skills = set(extract_skills(tgt.get("seed_jd", "")))
+            jd_set = set(jd_skills)
+            overlap = len(jd_set & seed_skills) / max(1, len(jd_set | seed_skills))
+            target_scores.append((overlap, tgt))
+        target_scores.sort(key=lambda x: -x[0])
+        top_target = target_scores[0][1] if target_scores else None
+
+        # Title hint — first 8 words of the JD's first non-empty line, with
+        # "Senior" / "Lead" / "Manager" / "Owner" boosted as likely title tokens.
+        title_hint = ""
+        for raw in jd_text.splitlines():
+            s = raw.strip()
+            if s and len(s.split()) <= 12 and any(c.isupper() for c in s):
+                title_hint = s.rstrip(".,:;")
+                break
+
+        # Optional live coverage against a supplied composition.
+        cov = None
+        composition = body.get("composition") or {}
+        if composition:
+            cv_texts = self._composition_to_texts(composition)
+            cov = skill_coverage(jd_text, cv_texts)
+
+        self._send_json({
+            "status": "ok",
+            "title_hint": title_hint,
+            "jd_skills": jd_skills,
+            "top_role_target": top_target["key"] if top_target else None,
+            "top_role_target_label": top_target["label"] if top_target else None,
+            "all_role_targets_ranked": [
+                {"key": t["key"], "label": t["label"], "score": round(s, 3)}
+                for s, t in target_scores
+            ],
+            "coverage": cov,
+        })
+
+    def _composition_to_texts(self, composition: dict) -> list[str]:
+        """Flatten a composition (summary + skills + per-role highlights)
+        into a flat list of strings for skill matching."""
+        out: list[str] = []
+        if composition.get("summary"):
+            out.append(composition["summary"])
+        out.extend(composition.get("skills", []) or [])
+        for r in composition.get("roles", []) or []:
+            out.append(r.get("position", ""))
+            out.append(r.get("company", ""))
+            out.extend(r.get("highlights", []) or [])
+        return out
+
+    def _handle_coverage(self, body):
+        """Lightweight coverage-only endpoint — same payload as jd_analyze
+        but skips title / target detection, for tight UI loops."""
+        jd_text = body.get("jd_text", "")
+        composition = body.get("composition") or {}
+        if not jd_text:
+            self._send_json({"error": "jd_text required"}, status=400)
+            return
+        cv_texts = self._composition_to_texts(composition)
+        self._send_json({"status": "ok", "coverage": skill_coverage(jd_text, cv_texts)})
 
     def _handle_tailor_view_freeform(self, body):
         """Structured editable view for a pasted JD (same shape as the
@@ -676,6 +765,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         elif path == "/api/tailor_view_freeform":
             self._handle_tailor_view_freeform(body)
+
+        elif path == "/api/jd_analyze":
+            self._handle_jd_analyze(body)
+
+        elif path == "/api/coverage":
+            self._handle_coverage(body)
 
         elif path == "/api/batch_generate":
             self._handle_batch_generate(body)

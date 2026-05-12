@@ -80,6 +80,38 @@
       ],
       "preferred_tags": ["delivery", "leadership", "tooling", "metric"],
       "boost_phrases": ["delivered", "led", "project", "schedule", "milestone", "go-live"]
+    },
+    {
+      "key": "product_manager",
+      "label": "Product Manager",
+      "detector_keywords": [
+        "product manager", "product strategy", "roadmap", "vision", "discovery",
+        "customer interview", "validation", "success metric", "product market fit",
+        "north star", "okr"
+      ],
+      "preferred_tags": ["product_owner", "leadership", "delivery", "tooling"],
+      "boost_phrases": ["product", "roadmap", "discovery", "vision", "prioritise", "validation"]
+    },
+    {
+      "key": "ai_governance",
+      "label": "AI Governance",
+      "detector_keywords": [
+        "ai governance", "ai policy", "model risk", "ai ethics", "ai compliance",
+        "eu ai act", "ai audit", "responsible ai", "ai risk", "ml ops governance"
+      ],
+      "preferred_tags": ["governance", "ai", "steering", "leadership", "portfolio"],
+      "boost_phrases": ["ai", "governance", "policy", "audit", "framework", "compliance", "evaluation"]
+    },
+    {
+      "key": "ai_evaluation",
+      "label": "AI Evaluation",
+      "detector_keywords": [
+        "ai evaluation", "ai investment", "ai roi", "ai business case",
+        "ai capability", "ai portfolio", "ai benefit", "model evaluation",
+        "ai use case", "ai roadmap"
+      ],
+      "preferred_tags": ["portfolio", "ai", "metric", "budget", "governance"],
+      "boost_phrases": ["ai", "evaluation", "roi", "business case", "investment", "portfolio", "benefit"]
     }
   ],
   "role_targets": [
@@ -117,6 +149,27 @@
       "profile": "product_owner",
       "variant": "tooling",
       "seed_jd": "IT Product Owner owning the backlog, roadmap and stakeholder engagement for an enterprise IT platform such as ServiceNow ITSM, LeanIX or Jira. Defines features and user stories, prioritises the backlog with business stakeholders, and partners with development and scrum master on sprint planning, refinement and delivery. Drives platform adoption, integration design and continuous improvement. Coordinates custom module development and bidirectional integrations. Reports to product or platform leadership."
+    },
+    {
+      "key": "product_manager",
+      "label": "Product Manager",
+      "profile": "product_manager",
+      "variant": "leadership",
+      "seed_jd": "Senior Product Manager owning the product strategy, roadmap and stakeholder engagement for an enterprise platform or internal product. Defines the vision, success metrics and prioritises features against business value, dependencies and technical risk. Partners with engineering, design, sales and operations on go-to-market, adoption and customer success. Drives discovery, customer interviews, hypothesis validation and post-launch measurement. Reports to product, executive or business-unit leadership."
+    },
+    {
+      "key": "ai_governance",
+      "label": "AI Governance",
+      "profile": "ai_governance",
+      "variant": "leadership",
+      "seed_jd": "Senior AI Governance lead responsible for designing and operating the AI governance framework across the enterprise. Owns policy for AI investment evaluation, model risk, data lineage, vendor assurance and ethical / responsible use. Coordinates with CIO, CFO, legal, compliance and risk on AI use-case approvals, audit readiness and EU AI Act / regulatory compliance. Defines AI decision rights, steering cadence and reporting to the executive board. Partners with portfolio and EA functions on AI capability roadmap and platform investments."
+    },
+    {
+      "key": "ai_evaluation_manager",
+      "label": "AI Evaluation Manager",
+      "profile": "ai_evaluation",
+      "variant": "metrics",
+      "seed_jd": "Senior AI Evaluation / AI Management lead owning the evaluation of AI investments and use cases across the IT portfolio. Designs the business-case scoring framework, ROI tracking model, hard-vs-soft benefit attribution and capability-adjusted projections on a five-year plan-of-record. Coordinates with CIO, CFO and business sponsors on AI investment decisions, vendor assessment and post-implementation review. Drives portfolio-level reporting on AI delivery, adoption and benefit realisation. Reports to CIO or AI executive leadership."
     }
   ],
   "variants": [

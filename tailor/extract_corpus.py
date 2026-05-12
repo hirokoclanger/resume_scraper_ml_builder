@@ -175,6 +175,16 @@ KEYWORD_TAGS = {
         "go-live",
     ],
     "budget": ["budget", "forecast", "contingency", "variance", "cost", "€", "eur"],
+    "ai": [
+        "ai ", "a.i.", "artificial intelligence", "machine learning", "ml ",
+        "llm", "gpt", "model risk", "ai roi", "ai governance", "ai evaluation",
+        "ai investment", "ai analytics", "ai use case", "ai framework",
+        "responsible ai", "ai policy", "ai cockpit",
+    ],
+    "product": [
+        "product manager", "product owner", "roadmap", "discovery",
+        "customer interview", "north star", "okr", "feature prioritisation",
+    ],
 }
 
 

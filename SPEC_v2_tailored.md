@@ -400,25 +400,43 @@ touch it. Phases 1 – 4 are React + Python work.
 
 ---
 
-## 14. Decision points for Philipp before dev starts
+## 13.5 Decisions locked (2026-05-12)
 
-The recruiter agent flags these as the points that need a human call,
-not a code decision:
+Philipp answered the open decisions; recording here so the dev team
+treats them as binding rather than open questions.
 
-1. **`.docx` urgency.** Research says `.docx` parses most reliably in
-   2026. Promote it from Phase 3 to Phase 1?
-2. **Default save behaviour for free-typed bullets.** *Use here only*
-   keeps master clean. *Save to master* compounds over time. Pick one.
-3. **JD source.** Paste-only, or also auto-detect when arriving from a
-   scored job click on `/`?
-4. **Listing-title editing.** Should the title-match enforcement edit
-   *Philipp's actual position titles* in his history, or only the
-   *headline* under his name? (`WRITER_GUIDE.md` §"The 2-minute loop"
-   says headline only — confirm.)
-5. **Phase 0.5 role names — exact label wording for the three new
-   role masks** (Product Manager, AI Governance, AI
-   Evaluation/Management). The role labels are filename-stable
-   identifiers; they need Philipp's wording.
+| # | Question                                                | Decision                                                                 |
+|---|---------------------------------------------------------|--------------------------------------------------------------------------|
+| 1 | `.docx` urgency                                          | **PDF only for v2** ship. `.docx` deferred. Editing happens in-page (Next.js); template stays stable; the page is also useful as a brief for human writers / HR. |
+| 2 | Default save-mode for free-typed bullets                | Both modes available per bullet; *Use here only* default, *Save to master* opt-in. |
+| 3 | JD source                                               | **Paste only** for v2. No auto-import from `/scored`.                    |
+| 4 | Title-match enforcement scope                           | **Editable, not just headline.** The candidate's real MAN role was "IT Portfolio Manager and Product Owner for ServiceNow ITSM", so calling himself "Product Owner ServiceNow" for a matching listing is both truthful and ranks higher. The page allows editing the position-title strings, with a banner reminding the user every edit must remain factually defensible. |
+| 5 | Wording for the three new role masks                    | Confirmed: **Product Manager**, **AI Governance**, **AI Evaluation Manager**. Implemented as `product_manager` / `ai_governance` / `ai_evaluation_manager` keys (commit at end of §13.5). |
+| 6 | Skill extraction from pasted JD                         | **In scope.** Powered by `tailor/skills.py` SKILL_REGISTRY + `/api/jd_analyze` and `/api/coverage`. Aligns with research §"Why Tailoring Wins" (76.4 % of recruiters filter by skills first). |
+
+Phase 0.5 is shipped in this same commit batch:
+
+- `tailor/profiles.json` now has the eight role targets (Governance,
+  Process, Portfolio, Project, IT Product Owner, Product Manager, AI
+  Governance, AI Evaluation Manager) and two new detection profiles
+  (`product_manager`, `ai_governance`, `ai_evaluation`).
+- `tailor/extract_corpus.py` `KEYWORD_TAGS` gained `ai` and `product`
+  buckets so existing AIXXEN / MAN-AI-framework bullets get correctly
+  surfaced for the new role targets.
+- `tailor/skills.py` defines the curated SKILL_REGISTRY (80+ entries
+  across platforms, methods, governance, product, AI, leadership,
+  certifications, industry domains). Editorial-team maintainable —
+  add a tuple, no other code changes needed.
+- `/api/jd_analyze` and `/api/coverage` are live on the existing server
+  so the future Next.js page already has a backend to talk to from day 1.
+
+---
+
+## 14. Open decisions (resolved — see §13.5)
+
+All Phase 0 / Phase 0.5 decisions are locked. Remaining open items
+appear inside each phase as the dev team encounters them. The agent
+team will keep `§13.5` as the authoritative decision log.
 
 ---
 

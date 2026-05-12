@@ -34,3 +34,6 @@ env/
 
 # Logs
 *.log
+
+# Tailored drafts — personal CV content
+drafts/

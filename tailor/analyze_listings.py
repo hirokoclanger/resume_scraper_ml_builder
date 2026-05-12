@@ -86,6 +86,28 @@ DRAFT_ROLES = [
         ],
     },
     {
+        "key": "ProductOwner",
+        "label": "Product Owner",
+        "must_include_any": ["product owner", "po servicenow", "po itsm", "platform owner"],
+        "boost_keywords": [
+            "backlog", "user stories", "user story", "sprint", "scrum",
+            "servicenow", "itsm", "jira", "refinement", "ceremonies",
+        ],
+        # Don't grab "Product Manager" listings here.
+        "exclude_if_any": ["senior product manager", "product manager,", "product manager.", "head of product"],
+    },
+    {
+        "key": "ProductManager",
+        "label": "Product Manager",
+        "must_include_any": ["product manager", "head of product", "principal product"],
+        "boost_keywords": [
+            "roadmap", "vision", "discovery", "north star", "okr",
+            "validation", "customer interview", "success metric", "go-to-market",
+            "outcome", "stakeholder",
+        ],
+        "exclude_if_any": ["product owner ", "product owner,"],
+    },
+    {
         "key": "ITProjectManager",
         "label": "IT Project Manager",
         "must_include_any": ["project manager", "project lead", "programme manager", "program manager"],
@@ -157,7 +179,32 @@ MARKER_START = "<!-- KEYWORDS_FROM_LISTINGS:START -->"
 MARKER_END = "<!-- KEYWORDS_FROM_LISTINGS:END -->"
 
 
-def render_block(role_key: str, agg: dict, scrape_ts: str) -> str:
+def strip_existing_block(text: str) -> str:
+    """Return `text` with any KEYWORDS_FROM_LISTINGS block removed, so the
+    draft body we measure coverage against doesn't double-count its own
+    previously-injected keywords."""
+    pattern = re.compile(
+        re.escape(MARKER_START) + r".*?" + re.escape(MARKER_END) + r"\n?",
+        re.DOTALL,
+    )
+    return pattern.sub("", text)
+
+
+def compute_draft_coverage(md_path: Path, high_freq_skills: list[str]) -> dict:
+    """How well does the current draft body cover the high-freq JD skills?
+
+    Returns {"present": [...], "missing": [...], "pct": float}."""
+    if not md_path.exists() or not high_freq_skills:
+        return {"present": [], "missing": list(high_freq_skills), "pct": 0.0}
+    body = strip_existing_block(md_path.read_text(encoding="utf-8"))
+    body_skills = set(extract_skills(body))
+    present = [s for s in high_freq_skills if s in body_skills]
+    missing = [s for s in high_freq_skills if s not in body_skills]
+    pct = (len(present) / len(high_freq_skills) * 100.0) if high_freq_skills else 0.0
+    return {"present": present, "missing": missing, "pct": round(pct, 1)}
+
+
+def render_block(role_key: str, agg: dict, scrape_ts: str, md_path: Path | None = None) -> str:
     """Render the markdown block to inject. Idempotent — re-runs overwrite."""
     n = agg["n"]
     if n == 0:
@@ -170,16 +217,22 @@ def render_block(role_key: str, agg: dict, scrape_ts: str) -> str:
             f"{MARKER_END}\n"
         )
     skill_counts: Counter = agg["skill_counts"]
+    high_freq_skills: list[str] = []
     high, mid, low = [], [], []
     for skill, count in sorted(skill_counts.items(), key=lambda x: -x[1]):
         pct = (count / n) * 100
         line = f"**{skill}** _{count}/{n} · {pct:.0f}%_"
         if pct >= 50:
             high.append(line)
+            high_freq_skills.append(skill)
         elif pct >= 20:
             mid.append(line)
         else:
             low.append(line)
+
+    # Draft-level coverage: how many of those high-freq skills are already
+    # in the draft body? Sub-80 % flags an optimisation candidate.
+    coverage = compute_draft_coverage(md_path, high_freq_skills) if md_path else {"pct": 0, "present": [], "missing": []}
 
     # Company sample (up to 8 unique)
     seen, samples = set(), []
@@ -199,6 +252,21 @@ def render_block(role_key: str, agg: dict, scrape_ts: str) -> str:
         "> Use this to validate which competencies to surface first.",
         "",
     ]
+    if high_freq_skills:
+        cov_pct = coverage["pct"]
+        cov_band = "✅ on target" if cov_pct >= 80 else ("⚠️ needs optimisation" if cov_pct >= 50 else "🔴 weak — optimise")
+        parts.append(f"**Draft coverage: {cov_pct:.0f} %** of high-frequency JD skills present in this draft ({len(coverage['present'])}/{len(high_freq_skills)}). {cov_band}")
+        parts.append("")
+        if coverage["missing"]:
+            parts.append("**Missing from this draft (action items):**")
+            for s in coverage["missing"]:
+                parts.append(f"- `{s}` — surface this in summary, competencies, or a bullet")
+            parts.append("")
+    else:
+        # Nothing hit ≥ 50 %. Show a different note so the user isn't
+        # chasing a coverage metric that isn't defined.
+        parts.append("**Draft coverage: N/A** — no single skill crossed the 50 % threshold in this bucket. Use the medium-frequency list to decide which 2–3 skills are worth surfacing.")
+        parts.append("")
     if high:
         parts.append("**High frequency (≥ 50 % of listings)** — must surface in your top half of page 1.")
         parts.append("")
@@ -273,16 +341,49 @@ def main() -> int:
     print()
 
     DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
+    summary_rows: list[tuple[str, int, float]] = []
     for role in DRAFT_ROLES:
         key = role["key"]
         md = DRAFTS_DIR / f"Eiselt_{key}.md"
         bucket = agg.get(key, {"n": 0, "skill_counts": Counter(), "companies": [], "titles": []})
-        block = render_block(key, bucket, scrape_ts)
+        block = render_block(key, bucket, scrape_ts, md_path=md)
         changed = upsert_block(md, block)
         marker = "✓ updated" if changed else "= unchanged"
         if not md.exists():
             marker = "✗ no draft file"
-        print(f"  {marker}  {md.name:<40} n={bucket['n']}")
+        # Re-read to extract coverage for the summary table
+        cov_pct = 0.0
+        if md.exists() and bucket["n"]:
+            high_freq = [s for s, c in bucket["skill_counts"].items() if (c / bucket["n"]) >= 0.5]
+            cov_pct = compute_draft_coverage(md, high_freq)["pct"]
+        print(f"  {marker}  {md.name:<40} n={bucket['n']:>4}  coverage={cov_pct:.0f}%")
+        summary_rows.append((key, bucket["n"], cov_pct))
+
+    print()
+    print("=== Coverage summary ===")
+    # Only report drafts where a high-frequency bucket actually exists and
+    # the sample size is meaningful (n ≥ 10). Otherwise coverage is noisy.
+    weak = []
+    for key, n, p in summary_rows:
+        if n < 10:
+            continue  # small-sample noise
+        # bucket had high-freq skills (coverage > 0 means at least 1/N present
+        # or 0/N missing — distinguish by re-checking)
+        md = DRAFTS_DIR / f"Eiselt_{key}.md"
+        if not md.exists():
+            continue
+        bucket = agg.get(key, {"skill_counts": Counter(), "n": 0})
+        high_freq = [s for s, c in bucket["skill_counts"].items() if (c / max(1, bucket["n"])) >= 0.5]
+        if not high_freq:
+            continue  # no defined coverage target
+        if p < 80:
+            weak.append((key, n, p))
+    if weak:
+        print("⚠️ Drafts under 80 % coverage (n ≥ 10, defined high-freq target) — optimisation candidates:")
+        for k, n, p in sorted(weak, key=lambda r: r[2]):
+            print(f"    {k:<24} {p:.0f}%  (n={n})")
+    else:
+        print("✅ All eligible drafts at ≥ 80 % coverage on their high-frequency JD skills.")
     return 0
 
 

@@ -70,13 +70,13 @@ CANONICAL_ROLES = [
     },
     {
         "key": "icelt_2026",
-        "position": "Independent IT Project, Governance & Transformation Consultant",
+        "position": "IT Consultant",
         "company": "ICELT",
         "start_date": "2026-01",
         "end_date": "present",
         "location": "Ho Chi Minh City, Vietnam",
-        "match_keywords": ["consultant", "icelt", "independent it"],
-        # Reject docx variants — the old freelance bullets are inaccurate now.
+        "match_keywords": ["it consultant", "icelt", "independent it"],
+        # Reject docx variants - the old freelance bullets are inaccurate now.
         "master_only": True,
     },
     {

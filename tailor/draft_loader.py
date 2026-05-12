@@ -31,7 +31,7 @@ _CANONICAL = [
     ("aixxen_solo_2026", "AIXXEN", "2026-02", "present", "Solo, remote",
         ["aixxen", "solo founder"]),
     ("icelt_2026", "ICELT", "2026-01", "present", "Ho Chi Minh City, Vietnam",
-        ["icelt", "independent it"]),
+        ["icelt", "independent it", "it consultant"]),
     ("career_break_2026", "Self-funded", "2026-01", "2026-03", "Vietnam, Cambodia, Thailand",
         ["career break", "southeast asia"]),
     ("man_portfolio_2022", "MAN Truck & Bus SE", "2022-09", "2025-12", "Munich, Germany",

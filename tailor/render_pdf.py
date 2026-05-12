@@ -195,6 +195,13 @@ def build_rendercv_yaml(tailored: dict, include_photo: bool = True) -> dict:
                 "right_margin": "0.7in",
                 "show_top_note": False,
             },
+            # Let an experience / projects entry split across a page
+            # boundary. Default `allow_page_break: false` was leaving big
+            # white gaps when a long role at the bottom of page 1
+            # couldn't fit and got pushed entirely to page 2.
+            "entries": {
+                "allow_page_break": True,
+            },
             "header": {
                 "connections": {
                     "phone_number_format": "international",

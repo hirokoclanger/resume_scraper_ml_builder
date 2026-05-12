@@ -122,44 +122,55 @@ def build_rendercv_yaml(tailored: dict, include_photo: bool = True) -> dict:
     elif h.get("headline"):
         cv["headline"] = h["headline"]
 
-    # Section order: Summary → Experience → Education → Projects → Languages
-    # → Core Competencies → Certifications. RenderCV preserves the insertion
-    # order of the sections dict.
-    sections: dict = {}
+    # Default section order: Summary → Experience → Education → Projects →
+    # Languages → Core Competencies → Certifications.
+    # If the draft sets `projects_first: True` (engineering / developer
+    # drafts where the personal products are the primary evidence), the
+    # Personal Software Projects section moves to the second slot, above
+    # Experience.
+    # RenderCV preserves the insertion order of the sections dict.
 
-    if tailored.get("summary"):
-        sections["Summary"] = [tailored["summary"]]
+    # Pre-build each section's value once so the only thing that varies
+    # is the insertion order.
+    summary_value = [tailored["summary"]] if tailored.get("summary") else None
 
     experience_entries = []
     for r in tailored["roles"]:
         if not r["highlights"]:
             continue
-        entry = {
+        experience_entries.append({
             "company": r["company"],
             "position": r["position"],
             "location": r["location"],
             "start_date": _date_str(r["start_date"]),
             "end_date": _date_str(r["end_date"]),
             "highlights": list(r["highlights"]),
-        }
-        experience_entries.append(entry)
-    if experience_entries:
-        sections["Experience"] = experience_entries
+        })
 
-    if tailored.get("education"):
-        # Education in the master file is a single text paragraph rather than
-        # a structured entry. Render it as plain text bullets to avoid losing
-        # the content.
-        sections["Education"] = list(tailored["education"])
-
+    project_entries = None
     if tailored.get("projects"):
-        proj_entries = []
+        project_entries = []
         for p in tailored["projects"]:
             entry = {"name": p["name"]}
             if p.get("summary"):
                 entry["summary"] = p["summary"]
-            proj_entries.append(entry)
-        sections["Personal Software Projects"] = proj_entries
+            project_entries.append(entry)
+
+    sections: dict = {}
+    if summary_value is not None:
+        sections["Summary"] = summary_value
+
+    if tailored.get("projects_first") and project_entries:
+        sections["Personal Software Projects"] = project_entries
+
+    if experience_entries:
+        sections["Experience"] = experience_entries
+
+    if tailored.get("education"):
+        sections["Education"] = list(tailored["education"])
+
+    if not tailored.get("projects_first") and project_entries:
+        sections["Personal Software Projects"] = project_entries
 
     if tailored.get("languages"):
         sections["Languages"] = list(tailored["languages"])

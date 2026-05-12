@@ -195,6 +195,12 @@ def load_draft(filename: str) -> dict:
         if wanted:
             project_filter = set(wanted)
 
+    # Per-draft directive: <!-- projects-first -->
+    # Engineering / developer drafts surface Personal Software Projects
+    # ABOVE Experience because the products are the primary evidence,
+    # not the corporate roles. Default = experience first.
+    projects_first = bool(re.search(r"<!--\s*projects-first\s*-->", raw, re.IGNORECASE))
+
     text = _strip_keyword_block(raw)
     sections = _section_split(text)
 
@@ -222,6 +228,7 @@ def load_draft(filename: str) -> dict:
         "education": education,
         "certifications": certifications,
         "languages": languages,
+        "projects_first": projects_first,
     }
 
 
@@ -285,5 +292,6 @@ def build_tailored(draft_filename: str, header: dict, *, draft_label: str | None
         "education": body["education"],
         "certifications": body["certifications"],
         "languages": body["languages"],
+        "projects_first": body.get("projects_first", False),
         "trace": {"source": "draft", "draft": draft_filename},
     }

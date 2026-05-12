@@ -427,11 +427,25 @@ def composition_from_edits(edits: dict) -> dict:
             by_id_highlight[b["id"]] = b
             by_id_role[b["id"]] = r["key"]
 
+    # Custom (free-typed) bullets are merged inline. Their ids look like
+    # `custom-skill-<n>` or `custom-<role_key>-<n>` and carry their text in
+    # parallel arrays on the edits payload (`custom_skills`,
+    # `roles[].custom_highlights`). Server-side composition just looks
+    # text up from those arrays when a corpus lookup misses.
+    custom_skill_by_id = {b["id"]: b["text"] for b in (edits.get("custom_skills") or [])}
+
     summary_text = ""
     if edits.get("summary_id") and edits["summary_id"] in by_id_summary:
         summary_text = by_id_summary[edits["summary_id"]]["text"]
+    elif edits.get("custom_summary"):
+        summary_text = edits["custom_summary"]
 
-    skills_text = [by_id_skills[i]["text"] for i in edits.get("skill_ids", []) if i in by_id_skills]
+    skills_text = []
+    for sid in edits.get("skill_ids", []):
+        if sid in by_id_skills:
+            skills_text.append(by_id_skills[sid]["text"])
+        elif sid in custom_skill_by_id:
+            skills_text.append(custom_skill_by_id[sid])
 
     roles_out = []
     for re in edits.get("roles", []):
@@ -439,10 +453,16 @@ def composition_from_edits(edits: dict) -> dict:
         if not meta:
             continue
         hl_ids = re.get("highlight_ids", [])
-        hl_text = [by_id_highlight[i]["text"] for i in hl_ids if i in by_id_highlight]
+        custom_hi_by_id = {b["id"]: b["text"] for b in (re.get("custom_highlights") or [])}
+        hl_text = []
+        for hid in hl_ids:
+            if hid in by_id_highlight:
+                hl_text.append(by_id_highlight[hid]["text"])
+            elif hid in custom_hi_by_id:
+                hl_text.append(custom_hi_by_id[hid])
         roles_out.append({
             "key": meta["key"],
-            "position": meta["position"],
+            "position": re.get("position_override") or meta["position"],
             "company": meta["company"],
             "start_date": meta["start_date"],
             "end_date": meta["end_date"],

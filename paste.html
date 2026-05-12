@@ -141,6 +141,59 @@
   }
   .render-results a { color: #6b46c1; }
   .render-results .err { color: #c0392b; }
+
+  /* ---- Analytics overlay (Phase 1: ATS coverage) ---- */
+  .analytics {
+    position: sticky; top: 20px;
+    border: 1px solid #d8d0ec; border-radius: 8px; padding: 14px;
+    background: #fcfbff; font-size: 12px;
+  }
+  .analytics h4 {
+    margin: 0 0 8px; font-size: 11px; text-transform: uppercase;
+    color: #6b46c1; letter-spacing: 0.04em;
+  }
+  .analytics .row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .badge {
+    display: inline-flex; gap: 4px; align-items: center;
+    padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500;
+  }
+  .badge.green  { background: #d8efd8; color: #1b6f1b; }
+  .badge.amber  { background: #fde9b4; color: #8a5a08; }
+  .badge.red    { background: #fad9d4; color: #a82a1a; }
+  .badge.grey   { background: #ececec; color: #555; }
+
+  .gauge {
+    position: relative; height: 14px; border-radius: 7px;
+    background: #e8e2f5; overflow: hidden; margin: 6px 0;
+  }
+  .gauge .fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    transition: width 0.3s ease;
+  }
+  .gauge .fill.red    { background: #c0392b; }
+  .gauge .fill.amber  { background: #d6a52a; }
+  .gauge .fill.green  { background: #2e9c52; }
+  .gauge-label { font-weight: 600; font-size: 13px; }
+
+  .missing-list { margin: 4px 0 0; padding-left: 18px; }
+  .missing-list li { margin: 2px 0; color: #444; }
+  .present-list { margin: 4px 0 0; padding-left: 18px; }
+  .present-list li { margin: 2px 0; color: #888; text-decoration: line-through; }
+  .skill-pill {
+    display: inline-block; margin: 2px 4px 2px 0;
+    padding: 2px 7px; border-radius: 3px;
+    background: #eee; font-size: 11px; color: #555;
+  }
+  .skill-pill.present { background: #d8efd8; color: #1b6f1b; }
+  .skill-pill.missing { background: #fad9d4; color: #a82a1a; }
+
+  .layout-grid {
+    display: grid; grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 18px; align-items: start;
+  }
+  @media (max-width: 960px) {
+    .layout-grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -185,14 +238,46 @@
   </div>
 </div>
 
-<div class="panel" id="compositionPanel" style="display:none">
-  <div id="compositionBody"><em>Loading…</em></div>
-  <div class="render-row">
-    <button class="variant-render-btn metrics" data-variant="metrics">Render Metrics PDF</button>
-    <button class="variant-render-btn leadership" data-variant="leadership">Render Leadership PDF</button>
-    <button class="variant-render-btn tooling" data-variant="tooling">Render Tooling PDF</button>
+<div class="layout-grid" id="compositionLayout" style="display:none">
+  <div class="panel">
+    <div id="compositionBody"><em>Loading…</em></div>
+    <div class="render-row">
+      <button class="variant-render-btn metrics" data-variant="metrics" data-fmt="pdf">Render Metrics PDF</button>
+      <button class="variant-render-btn leadership" data-variant="leadership" data-fmt="pdf">Render Leadership PDF</button>
+      <button class="variant-render-btn tooling" data-variant="tooling" data-fmt="pdf">Render Tooling PDF</button>
+    </div>
+    <div class="render-row" style="margin-top:0;padding-top:0;border-top:none">
+      <button class="variant-render-btn" data-variant="metrics" data-fmt="docx"
+              style="background:#2e9c52;border-color:#2e9c52;flex:1">Export .docx (ATS-friendly)</button>
+      <span class="hint" style="flex:2;margin-top:0">Word .docx parses most reliably across ATS in 2026.</span>
+    </div>
+    <div class="render-results" id="renderResults" style="display:none"></div>
   </div>
-  <div class="render-results" id="renderResults" style="display:none"></div>
+  <div class="analytics" id="analyticsPanel">
+    <h4>ATS analytics</h4>
+    <div class="row">
+      <span style="flex:1">Title match</span>
+      <span class="badge grey" id="titleBadge">—</span>
+    </div>
+    <div id="titleHintBlock" style="font-size:11px;color:#666;margin-bottom:8px"></div>
+
+    <h4>Coverage</h4>
+    <div class="gauge-label">
+      <span id="coveragePct">—</span>
+      <span style="font-weight:400;color:#888;font-size:11px" id="coverageRatio"></span>
+    </div>
+    <div class="gauge"><div class="fill amber" id="coverageFill" style="width:0%"></div></div>
+    <div style="font-size:11px;color:#888;margin-bottom:8px">Target band 70 – 80 % · over 80 % risks keyword stuffing.</div>
+
+    <h4>Missing JD skills</h4>
+    <div id="missingList"><em style="color:#888">paste a JD to scan</em></div>
+
+    <h4 style="margin-top:12px">Already covered</h4>
+    <div id="presentList"><em style="color:#888">—</em></div>
+
+    <h4 style="margin-top:12px">Closest role mask</h4>
+    <div id="topRole" style="font-size:12px;color:#444">—</div>
+  </div>
 </div>
 
 <div class="panel">
@@ -225,12 +310,23 @@ const titleEl = document.getElementById("title");
 const headerKeyEl = document.getElementById("headerKey");
 const headerHintEl = document.getElementById("headerHint");
 const statusEl = document.getElementById("status");
-const compositionPanel = document.getElementById("compositionPanel");
+const compositionPanel = document.getElementById("compositionLayout");
 const compositionBody = document.getElementById("compositionBody");
 const renderResults = document.getElementById("renderResults");
 
+// Analytics panel elements
+const titleBadge   = document.getElementById("titleBadge");
+const titleHint    = document.getElementById("titleHintBlock");
+const coveragePct  = document.getElementById("coveragePct");
+const coverageFill = document.getElementById("coverageFill");
+const coverageRatio= document.getElementById("coverageRatio");
+const missingList  = document.getElementById("missingList");
+const presentList  = document.getElementById("presentList");
+const topRole      = document.getElementById("topRole");
+
 let headerVariants = {};
-let state = { view: null, edits: null, currentVariant: "metrics" };
+let state = { view: null, edits: null, currentVariant: "metrics", lastJd: "" };
+let coverageDebounce = null;
 
 jdEl.addEventListener("input", () => {
   jdHint.textContent = `${jdEl.value.length} chars`;
@@ -283,34 +379,143 @@ async function loadVariant(variantKey, fromTab) {
   if (fromTab && !confirm(`Re-ranking for '${variantKey}' will discard your manual edits. Continue?`)) return;
   statusEl.textContent = "Ranking bullets locally…";
   try {
-    const res = await fetch("/api/tailor_view_freeform", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jd_text: jd,
-        company: companyEl.value.trim(),
-        title: titleEl.value.trim(),
-        variant: variantKey,
-      }),
-    });
-    const data = await res.json();
+    // Fire view + analyze in parallel; the latter populates the right panel.
+    const [viewRes, analyzeRes] = await Promise.all([
+      fetch("/api/tailor_view_freeform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jd_text: jd,
+          company: companyEl.value.trim(),
+          title: titleEl.value.trim(),
+          variant: variantKey,
+        }),
+      }).then(r => r.json()),
+      fetch("/api/jd_analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jd_text: jd }),
+      }).then(r => r.json()),
+    ]);
     statusEl.textContent = "";
-    if (data.error) {
-      showToast(data.error, true);
-      return;
-    }
-    state.view = data.view;
+    if (viewRes.error) { showToast(viewRes.error, true); return; }
+    state.view = viewRes.view;
     state.currentVariant = variantKey;
-    state.edits = editsFromView(data.view);
+    state.edits = editsFromView(viewRes.view);
     if (headerKeyEl.value) state.edits.header_key = headerKeyEl.value;
-    compositionPanel.style.display = "block";
+    state.lastJd = jd;
+    compositionPanel.style.display = "grid";
     renderResults.style.display = "none";
     renderResults.innerHTML = "";
     renderComposition();
+    paintAnalytics(analyzeRes);
+    scheduleCoverageRefresh();
   } catch (e) {
     statusEl.textContent = "";
     showToast("Network error: " + e.message, true);
   }
+}
+
+function paintAnalytics(analyze) {
+  if (!analyze || analyze.error) return;
+  // Title match: compare detected listing title against the title input
+  const t = (titleEl.value || "").trim().toLowerCase();
+  const hint = (analyze.title_hint || "").trim();
+  if (!hint) {
+    titleBadge.className = "badge grey"; titleBadge.textContent = "no title detected";
+    titleHint.textContent = "";
+  } else if (t && hint.toLowerCase().includes(t)) {
+    titleBadge.className = "badge green"; titleBadge.textContent = "matches";
+    titleHint.textContent = `JD: ${hint}`;
+  } else if (t) {
+    titleBadge.className = "badge amber"; titleBadge.textContent = "differs";
+    titleHint.innerHTML = `JD: ${escapeHtml(hint)} <button class="ed-add" data-action="copy-title" style="background:#6b46c1;color:white;border:none;border-radius:3px;padding:1px 7px;font-size:11px;cursor:pointer;margin-left:4px">use this</button>`;
+  } else {
+    titleBadge.className = "badge amber"; titleBadge.textContent = "no input";
+    titleHint.innerHTML = `JD title: <strong>${escapeHtml(hint)}</strong> · <button data-action="copy-title" style="background:#6b46c1;color:white;border:none;border-radius:3px;padding:1px 7px;font-size:11px;cursor:pointer">copy to title field</button>`;
+  }
+  if (analyze.top_role_target_label) {
+    topRole.innerHTML = `<strong>${escapeHtml(analyze.top_role_target_label)}</strong> <span style="color:#888">(${escapeHtml(analyze.top_role_target || "")})</span>`;
+  } else {
+    topRole.textContent = "—";
+  }
+}
+
+document.getElementById("analyticsPanel").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-action='copy-title']");
+  if (!b) return;
+  const m = /JD:\s*(.+?)(?:\s·|$)/.exec(titleHint.textContent || "");
+  if (m) { titleEl.value = m[1].trim(); scheduleCoverageRefresh(); }
+});
+
+function compositionTextsForCoverage() {
+  const e = state.edits, v = state.view;
+  if (!e || !v) return { summary: "", skills: [], roles: [] };
+  const lookupSummary = id => {
+    const pool = v.summary.picked.concat(v.summary.unpicked);
+    const b = pool.find(b => b.id === id);
+    return b ? b.text : "";
+  };
+  const lookupSkill = id => {
+    const pool = v.skills.picked.concat(v.skills.unpicked);
+    const b = pool.find(b => b.id === id);
+    return b ? b.text : "";
+  };
+  return {
+    summary: lookupSummary(e.summary_id),
+    skills: e.skill_ids.map(lookupSkill).filter(Boolean),
+    roles: e.roles.map(r => {
+      const rv = v.roles.find(x => x.key === r.key);
+      const pool = rv ? rv.highlights_picked.concat(rv.highlights_unpicked) : [];
+      return {
+        position: rv ? rv.position : r.position,
+        company:  rv ? rv.company  : r.company,
+        highlights: r.highlight_ids.map(id => {
+          const b = pool.find(b => b.id === id);
+          return b ? b.text : "";
+        }).filter(Boolean),
+      };
+    }),
+  };
+}
+
+function scheduleCoverageRefresh() {
+  if (coverageDebounce) clearTimeout(coverageDebounce);
+  coverageDebounce = setTimeout(refreshCoverage, 200);
+}
+
+async function refreshCoverage() {
+  if (!state.edits || !state.lastJd) return;
+  try {
+    const r = await fetch("/api/coverage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jd_text: state.lastJd, composition: compositionTextsForCoverage() }),
+    });
+    const d = await r.json();
+    if (d.coverage) paintCoverage(d.coverage);
+  } catch (_) { /* offline-safe */ }
+}
+
+function paintCoverage(c) {
+  const pct = c.coverage_pct || 0;
+  coveragePct.textContent = pct.toFixed(0) + "%";
+  coverageRatio.textContent = `(${c.present.length}/${c.jd_skills.length})`;
+  let band = "red";
+  if (pct >= 50 && pct < 70) band = "amber";
+  else if (pct >= 70 && pct <= 80) band = "green";
+  else if (pct > 80 && pct <= 90) band = "amber";
+  else if (pct > 90) band = "red"; // keyword stuffing risk
+  coverageFill.className = "fill " + band;
+  coverageFill.style.width = Math.min(100, pct) + "%";
+  // Cap rendering to the 5 most impactful missing skills (already ranked).
+  const miss = c.missing.slice(0, 8);
+  missingList.innerHTML = miss.length
+    ? miss.map(s => `<span class="skill-pill missing">${escapeHtml(s)}</span>`).join("")
+    : `<em style="color:#888">none — every JD skill is in your CV</em>`;
+  presentList.innerHTML = c.present.length
+    ? c.present.map(s => `<span class="skill-pill present">${escapeHtml(s)}</span>`).join("")
+    : `<em style="color:#888">—</em>`;
 }
 
 function editsFromView(view) {
@@ -321,12 +526,84 @@ function editsFromView(view) {
     include_photo: document.getElementById("includePhoto").checked,
     summary_id: (view.summary.picked[0] && view.summary.picked[0].id) || null,
     skill_ids: view.skills.picked.map(b => b.id),
+    custom_skills: [],   // free-typed skills (use-here-only)
     roles: view.roles.map(r => ({
       key: r.key, position: r.position, company: r.company,
       start_date: r.start_date, end_date: r.end_date, location: r.location,
       highlight_ids: r.highlights_picked.map(b => b.id),
+      custom_highlights: [], // free-typed bullets (use-here-only)
     })),
   };
+}
+
+let customCounter = 0;
+function nextCustomId(prefix) {
+  customCounter += 1;
+  return `custom-${prefix}-${customCounter}`;
+}
+
+async function addCustomBullet({ scope, roleKey, text, saveToMaster }) {
+  text = (text || "").trim();
+  if (!text) return showToast("Type some text first", true);
+  if (text.length < 5) return showToast("Bullet too short", true);
+  if (saveToMaster) {
+    const body = scope === "skill"
+      ? { section: "skills", text }
+      : { section: "role", role_key: roleKey, text };
+    const r = await fetch("/api/master/bullet", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (data.error) return showToast("Save failed: " + data.error, true);
+    if (data.id) {
+      if (scope === "skill") state.edits.skill_ids.push(data.id);
+      else findRoleInEdits(roleKey).highlight_ids.push(data.id);
+      // Drop the JD analyse cache so the next composition fetch sees the
+      // new corpus on the next variant reload — but for THIS render we use
+      // the id we just got.
+      showToast("Saved to master and added to CV");
+      // Refresh the view so the pool reflects the new bullet on next interaction.
+      await refreshViewPreservingEdits();
+      renderComposition();
+      scheduleCoverageRefresh();
+    } else {
+      showToast("Saved but couldn't locate id; reloading view", true);
+      await refreshViewPreservingEdits();
+    }
+    return;
+  }
+  // Use-here-only: synthesize an id, stash text in custom_*, add the id to edits.
+  if (scope === "skill") {
+    const id = nextCustomId("skl");
+    state.edits.custom_skills.push({ id, text });
+    state.edits.skill_ids.push(id);
+  } else {
+    const role = findRoleInEdits(roleKey);
+    const id = nextCustomId(roleKey);
+    role.custom_highlights = role.custom_highlights || [];
+    role.custom_highlights.push({ id, text });
+    role.highlight_ids.push(id);
+  }
+  showToast("Added (not persisted to master)");
+  renderComposition();
+  scheduleCoverageRefresh();
+}
+
+async function refreshViewPreservingEdits() {
+  // Re-fetch the view so the new master bullet is in the unpicked pool the
+  // next time the user opens an "+ Add" menu. We preserve the edits state.
+  const jd = state.lastJd;
+  if (!jd) return;
+  try {
+    const v = await fetch("/api/tailor_view_freeform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jd_text: jd, variant: state.currentVariant }),
+    }).then(r => r.json());
+    if (v.view) state.view = v.view;
+  } catch (_) {}
 }
 
 function findRoleInView(roleKey) { return state.view.roles.find(r => r.key === roleKey); }
@@ -394,6 +671,14 @@ function renderComposition() {
           </select>
           <button data-action="add-skill">Add</button>
         </div>` : ""}
+      <div class="ed-add" style="margin-top:6px">
+        <input type="text" data-free-type="skill"
+               placeholder="+ Type a new skill / bullet (free text)…"
+               style="flex:1;padding:4px 8px;font-size:12px;border:1px solid #ccc;border-radius:4px">
+        <button data-action="free-add-skill" data-mode="here" title="Add to this CV only">Use here</button>
+        <button data-action="free-add-skill" data-mode="master" title="Append to master.md and add"
+                style="background:#2e9c52;border-color:#2e9c52">Save to master</button>
+      </div>
     </div>
   `;
 
@@ -429,6 +714,15 @@ function renderComposition() {
               ${unpickedBullets.map(b => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.text.slice(0, 100))}${b.text.length > 100 ? "…" : ""}</option>`).join("")}
             </select>
             <button data-action="add-highlight" data-role="${escapeHtml(roleView.key)}">Add</button>
+          </div>` : ""}
+        ${!removed ? `
+          <div class="ed-add" style="margin-top:4px">
+            <input type="text" data-free-type-role="${escapeHtml(roleView.key)}"
+                   placeholder="+ Type a new bullet for this role (free text)…"
+                   style="flex:1;padding:4px 8px;font-size:12px;border:1px solid #ccc;border-radius:4px">
+            <button data-action="free-add-highlight" data-role="${escapeHtml(roleView.key)}" data-mode="here" title="Add to this CV only">Use here</button>
+            <button data-action="free-add-highlight" data-role="${escapeHtml(roleView.key)}" data-mode="master" title="Append to master.md and add"
+                    style="background:#2e9c52;border-color:#2e9c52">Save to master</button>
           </div>` : ""}
       </div>
     `;
@@ -478,10 +772,28 @@ compositionBody.addEventListener("click", (e) => {
       key: roleView.key, position: roleView.position, company: roleView.company,
       start_date: roleView.start_date, end_date: roleView.end_date, location: roleView.location,
       highlight_ids: roleView.highlights_picked.map(b => b.id),
+      custom_highlights: [],
     });
     const orderKeys = state.view.roles.map(r => r.key);
     edits.roles.sort((a, b) => orderKeys.indexOf(a.key) - orderKeys.indexOf(b.key));
     renderComposition();
+  } else if (action === "free-add-skill") {
+    const input = compositionBody.querySelector('input[data-free-type="skill"]');
+    if (!input) return;
+    addCustomBullet({
+      scope: "skill", text: input.value,
+      saveToMaster: t.dataset.mode === "master",
+    });
+    input.value = "";
+  } else if (action === "free-add-highlight") {
+    const roleKey = t.dataset.role;
+    const input = compositionBody.querySelector(`input[data-free-type-role="${roleKey}"]`);
+    if (!input) return;
+    addCustomBullet({
+      scope: "highlight", roleKey, text: input.value,
+      saveToMaster: t.dataset.mode === "master",
+    });
+    input.value = "";
   }
 });
 
@@ -490,8 +802,15 @@ compositionBody.addEventListener("change", (e) => {
   if (action === "set-summary") {
     state.edits.summary_id = e.target.value || null;
     renderComposition();
+    scheduleCoverageRefresh();
   }
 });
+
+// Any click that mutates edits (remove-skill, add-skill, remove/add highlight,
+// drop/restore role) re-renders the composition; piggyback coverage refresh.
+const _origClickHandler = compositionBody.onclick;
+compositionBody.addEventListener("click", () => scheduleCoverageRefresh());
+titleEl.addEventListener("input", () => paintAnalytics({ title_hint: document.querySelector("#titleHintBlock")?.dataset?.hint || "" }));
 
 // ---- Render PDF buttons ----
 document.querySelectorAll(".variant-render-btn").forEach(btn => {
@@ -507,7 +826,9 @@ document.querySelectorAll(".variant-render-btn").forEach(btn => {
       // Keep edits.include_photo in sync with the live checkbox so toggling
       // after the composition is built still takes effect.
       state.edits.include_photo = document.getElementById("includePhoto").checked;
-      const res = await fetch("/api/tailor_pdf_from_edits", {
+      const fmt = btn.dataset.fmt || "pdf";
+      const endpoint = fmt === "docx" ? "/api/tailor_docx_from_edits" : "/api/tailor_pdf_from_edits";
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

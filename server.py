@@ -59,6 +59,9 @@ CATALOG_PATH = HERE / "source_catalog.txt"
 ENV_PATH = HERE / ".env"
 CORPUS_PATH = HERE / "corpus" / "corpus.json"
 TAILORED_DIR = HERE / "results" / "tailored"
+MASTER_PATH = Path(
+    "/Users/ttt/Library/Mobile Documents/com~apple~CloudDocs/CV/Resume/Claudes/Philipp Eiselt Resume - master sentences.md"
+)
 
 # Local tailoring engine (pure retrieval — no Claude API).
 sys.path.insert(0, str(HERE))
@@ -72,6 +75,7 @@ from tailor.retrieval import (  # noqa: E402
     load_profiles,
 )
 from tailor.render_pdf import render_pdf, slugify  # noqa: E402
+from tailor.render_docx import render_docx  # noqa: E402
 from tailor.skills import coverage as skill_coverage, extract_skills  # noqa: E402
 
 # Will be set after server constructed so /api/shutdown can stop it
@@ -372,6 +376,179 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "total": len(results),
         })
 
+    def _handle_tailor_docx_from_edits(self, body):
+        """Same shape as /api/tailor_pdf_from_edits but writes a .docx via
+        python-docx. ATS-friendly format per research_2026.md."""
+        company = (body.get("company", "") or "Unknown").strip()
+        title = (body.get("title", "") or "Role").strip()
+        variant_key = (body.get("variant", "") or "metrics").strip()
+        edits = body.get("edits") or {}
+        if not edits.get("roles") and not edits.get("skill_ids"):
+            self._send_json({"error": "edits.roles and edits.skill_ids cannot both be empty"}, status=400)
+            return
+        try:
+            corpus, cfg = self._ensure_corpus()
+        except RuntimeError as e:
+            self._send_json({"error": str(e)}, status=500)
+            return
+        valid_variant_keys = {v["key"] for v in cfg["variants"]}
+        if variant_key not in valid_variant_keys:
+            self._send_json({"error": f"unknown variant '{variant_key}'"}, status=400)
+            return
+        edits["variant"] = variant_key
+        edits["variant_label"] = next(v["label"] for v in cfg["variants"] if v["key"] == variant_key)
+        composition = composition_from_edits(edits)
+        company_slug = slugify(company)
+        title_slug = slugify(title)
+        header_key = edits.get("header_key") or ""
+        include_photo = bool(body.get("include_photo", True))
+        if header_key:
+            stem = f"Eiselt__{company_slug}__{title_slug}__{header_key}__{variant_key}"
+        else:
+            stem = f"Eiselt__{company_slug}__{title_slug}__{variant_key}"
+        try:
+            docx_path = render_docx(composition, TAILORED_DIR, stem, include_photo=include_photo)
+        except Exception as e:
+            self._send_json({"error": f"{type(e).__name__}: {e}"}, status=500)
+            return
+        self._send_json({
+            "status": "ok",
+            "variant": variant_key,
+            "filename": docx_path.name,
+            "url": f"/api/tailored/{docx_path.name}",
+            "size_bytes": docx_path.stat().st_size,
+            "format": "docx",
+        })
+
+    def _handle_master_bullet(self, body):
+        """Append a free-typed bullet to the master sentences markdown.
+
+        Body:
+          { "section": "skills" | "role", "role_key": "<key>"?,
+            "text": "the bullet" }
+
+        Writes to the master file in-place, then triggers a corpus rebuild
+        so the new bullet is immediately available to all future renders.
+        Returns the canonical id assigned by the extractor.
+        """
+        section = (body.get("section") or "").strip()
+        text = (body.get("text") or "").strip()
+        role_key = (body.get("role_key") or "").strip()
+        if not text or len(text) < 3:
+            self._send_json({"error": "text required"}, status=400)
+            return
+        if section not in ("skills", "role"):
+            self._send_json({"error": "section must be 'skills' or 'role'"}, status=400)
+            return
+        if section == "role" and not role_key:
+            self._send_json({"error": "role_key required when section='role'"}, status=400)
+            return
+
+        master_path = MASTER_PATH
+        if not master_path.exists():
+            self._send_json({"error": f"master file missing at {master_path}"}, status=500)
+            return
+        original = master_path.read_text(encoding="utf-8")
+        lines = original.splitlines(keepends=False)
+
+        if section == "skills":
+            # Append under "## CORE COMPETENCIES" at the end of its bullet list.
+            target_anchor = "## CORE COMPETENCIES"
+            new_lines = self._insert_bullet_under_section(lines, target_anchor, text)
+        else:
+            # Append under "### <position>" header matching the role_key in
+            # CANONICAL_ROLES — match on the role_key keywords.
+            from tailor.extract_corpus import CANONICAL_ROLES
+            role = next((r for r in CANONICAL_ROLES if r["key"] == role_key), None)
+            if not role:
+                self._send_json({"error": f"unknown role_key '{role_key}'"}, status=400)
+                return
+            new_lines = self._insert_bullet_under_role(lines, role, text)
+
+        if new_lines is None:
+            self._send_json({"error": f"could not find insertion point for section={section}"}, status=500)
+            return
+        master_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
+        # Re-run extraction so the bullet exists in corpus.json with a stable id.
+        proc = subprocess.run(
+            [sys.executable, str(HERE / "tailor" / "extract_corpus.py")],
+            capture_output=True, text=True, timeout=60,
+        )
+        if proc.returncode != 0:
+            self._send_json({"error": "corpus rebuild failed", "stderr": proc.stderr[:400]}, status=500)
+            return
+
+        # Look up the new bullet's assigned id by scanning the fresh corpus.
+        # The extractor normalises em-dashes, smart quotes, and whitespace —
+        # so we use the same normaliser to compare.
+        from tailor.extract_corpus import normalise as _normalise
+        target = _normalise(text)
+        corpus = load_corpus(CORPUS_PATH)
+        new_id = None
+        if section == "skills":
+            for b in corpus.get("skills_pool", []):
+                if _normalise(b["text"]) == target:
+                    new_id = b["id"]; break
+        else:
+            for r in corpus.get("roles", []):
+                if r["key"] != role_key:
+                    continue
+                for b in r.get("highlights_pool", []):
+                    if _normalise(b["text"]) == target:
+                        new_id = b["id"]; break
+                break
+        self._send_json({"status": "ok", "id": new_id, "persisted": True})
+
+    def _insert_bullet_under_section(self, lines, anchor, bullet_text):
+        try:
+            idx = next(i for i, ln in enumerate(lines) if ln.strip() == anchor)
+        except StopIteration:
+            return None
+        # Find end of section's bullet block — first blank line followed by
+        # next ## heading, or just the next non-bullet line.
+        insert_at = len(lines)
+        for j in range(idx + 1, len(lines)):
+            s = lines[j].strip()
+            if s.startswith("## "):
+                insert_at = j
+                break
+        # Trim back any trailing blanks before insert_at so the new bullet
+        # stays inside the section.
+        while insert_at > 0 and lines[insert_at - 1].strip() == "":
+            insert_at -= 1
+        return lines[:insert_at] + [f"- {bullet_text}"] + lines[insert_at:]
+
+    def _insert_bullet_under_role(self, lines, role, bullet_text):
+        """Insert a bullet under the role's ### heading inside ## EXPERIENCE."""
+        # Find ## EXPERIENCE first to scope the search.
+        try:
+            exp_start = next(i for i, ln in enumerate(lines) if ln.strip() == "## EXPERIENCE")
+        except StopIteration:
+            return None
+        # Find the role's ### heading by matching keywords.
+        role_idx = None
+        for j in range(exp_start + 1, len(lines)):
+            ln = lines[j]
+            if ln.strip().startswith("### "):
+                low = ln.lower()
+                if any(kw in low for kw in role["match_keywords"]):
+                    role_idx = j; break
+            if ln.strip().startswith("## "):
+                break
+        if role_idx is None:
+            return None
+        # Find end of this role's bullet block (next ### or ## heading).
+        end = len(lines)
+        for j in range(role_idx + 1, len(lines)):
+            s = lines[j].strip()
+            if s.startswith("### ") or s.startswith("## "):
+                end = j; break
+        # Trim back trailing blanks.
+        while end > 0 and lines[end - 1].strip() == "":
+            end -= 1
+        return lines[:end] + [f"- {bullet_text}"] + lines[end:]
+
     def _handle_jd_analyze(self, body):
         """Spec §10 endpoint for the v2 tailored page.
 
@@ -582,8 +759,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._send_json({"task_id": task_id, "kind": "rebuild_corpus"})
 
     def _serve_tailored_pdf(self, filename):
-        """Stream a previously generated PDF from results/tailored/."""
-        # Defensive: only serve files inside TAILORED_DIR.
+        """Stream a previously generated PDF or .docx from results/tailored/."""
         candidate = (TAILORED_DIR / filename).resolve()
         try:
             candidate.relative_to(TAILORED_DIR.resolve())
@@ -594,12 +770,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_error(404)
             return
         data = candidate.read_bytes()
+        mime = "application/pdf"
+        disposition = "inline"
+        if candidate.suffix.lower() == ".docx":
+            mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            disposition = "attachment"  # browsers can't preview docx
         self.send_response(200)
-        self.send_header("Content-Type", "application/pdf")
+        self.send_header("Content-Type", mime)
         self.send_header("Content-Length", str(len(data)))
         self.send_header(
             "Content-Disposition",
-            f'inline; filename="{candidate.name}"',
+            f'{disposition}; filename="{candidate.name}"',
         )
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
@@ -760,6 +941,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif path == "/api/tailor_pdf_from_edits":
             self._handle_tailor_pdf_from_edits(body)
 
+        elif path == "/api/tailor_docx_from_edits":
+            self._handle_tailor_docx_from_edits(body)
+
         elif path == "/api/tailor_preview":
             self._handle_tailor_preview(body)
 
@@ -771,6 +955,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         elif path == "/api/coverage":
             self._handle_coverage(body)
+
+        elif path == "/api/master/bullet":
+            self._handle_master_bullet(body)
 
         elif path == "/api/batch_generate":
             self._handle_batch_generate(body)

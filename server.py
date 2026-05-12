@@ -59,6 +59,15 @@ CATALOG_PATH = HERE / "source_catalog.txt"
 ENV_PATH = HERE / ".env"
 CORPUS_PATH = HERE / "corpus" / "corpus.json"
 TAILORED_DIR = HERE / "results" / "tailored"
+
+# Geography-code mapping used in Library export filenames.
+# Eiselt_Resume_<JobTitle>_<GeoCode>.pdf — short codes recruiters expect.
+GEO_CODE = {
+    "germany":   "G",
+    "vietnam":   "VN",
+    "taiwan":    "TW",
+    "singapore": "SG",
+}
 MASTER_PATH = Path(
     "/Users/ttt/Library/Mobile Documents/com~apple~CloudDocs/CV/Resume/Claudes/Philipp Eiselt Resume - master sentences.md"
 )
@@ -347,8 +356,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except FileNotFoundError as e:
             self._send_json({"error": str(e)}, status=404)
             return
-        # Filename: Eiselt__Library__{draft}__{header}.{ext}
-        stem = f"Eiselt__Library__{label}__{header_key}"
+        # Filename: Eiselt_Resume_<JobTitle>_<GeoCode>.<ext> — single
+        # underscores so the title and geo are readable in Finder /
+        # email attachments, and country codes are the short ones
+        # recruiters expect.
+        geo = GEO_CODE.get(header_key, header_key.upper())
+        stem = f"Eiselt_Resume_{label}_{geo}"
         try:
             if fmt == "docx":
                 out = render_docx(tailored, TAILORED_DIR, stem, include_photo=include_photo)

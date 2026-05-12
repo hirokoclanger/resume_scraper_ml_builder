@@ -689,17 +689,20 @@ async function initDrafts() {
   }
 }
 
+const GEO_CODE = { germany: "G", vietnam: "VN", taiwan: "TW", singapore: "SG" };
+
 async function syncDraftsPdfs() {
   const r = await fetch("/api/tailored").then(r => r.json());
   for (const p of r.pdfs || []) {
-    if (p.filename && p.filename.startsWith("Eiselt__Library__")) {
+    if (p.filename && p.filename.startsWith("Eiselt_Resume_")) {
       draftsByName.set(p.filename, p);
     }
   }
 }
 
 function draftFilename(draft, header) {
-  return `Eiselt__Library__${draft.key}__${header}.pdf`;
+  const geo = GEO_CODE[header] || header.toUpperCase();
+  return `Eiselt_Resume_${draft.key}_${geo}.pdf`;
 }
 
 function renderDraftsGrid() {

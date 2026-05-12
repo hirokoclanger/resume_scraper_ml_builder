@@ -81,8 +81,12 @@ def _date_str(d: str) -> str | None:
     return d
 
 
-def build_rendercv_yaml(tailored: dict) -> dict:
-    """Construct a v2 RenderCV YAML dict from the tailored structure."""
+def build_rendercv_yaml(tailored: dict, include_photo: bool = True) -> dict:
+    """Construct a v2 RenderCV YAML dict from the tailored structure.
+
+    `include_photo` controls whether the renderer attaches the headshot from
+    assets/. When False, the photo field is omitted even if a source image
+    exists on disk — useful for US/UK-style applications that omit photos."""
     h = tailored["header"]
 
     # RenderCV's `phone` field is strict E.164 single-value. When the header
@@ -105,7 +109,7 @@ def build_rendercv_yaml(tailored: dict) -> dict:
         "social_networks": _social_networks(h),
         "sections": {},
     }
-    photo_path = find_photo()
+    photo_path = find_photo() if include_photo else None
     if photo_path:
         cv["photo"] = str(photo_path)
     if tailored.get("profile_label"):
@@ -265,11 +269,12 @@ def _social_networks(header: dict) -> list[dict]:
     return out
 
 
-def render_pdf(tailored: dict, output_dir: Path, filename_stem: str) -> Path:
+def render_pdf(tailored: dict, output_dir: Path, filename_stem: str, *, include_photo: bool = True) -> Path:
     """Run RenderCV and return the path to the produced PDF, renamed to
-    `<filename_stem>.pdf` inside `output_dir`."""
+    `<filename_stem>.pdf` inside `output_dir`. Set include_photo=False to
+    omit the headshot for this render."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    rcv_yaml = build_rendercv_yaml(tailored)
+    rcv_yaml = build_rendercv_yaml(tailored, include_photo=include_photo)
     with tempfile.TemporaryDirectory(prefix="rendercv_") as tmpdir:
         tmp = Path(tmpdir)
         yaml_path = tmp / "cv.yaml"
@@ -322,6 +327,7 @@ def render_all_variants(
     *,
     output_dir: Path = TAILORED_DIR,
     only_variants: list[str] | None = None,
+    include_photo: bool = True,
 ) -> list[dict]:
     """Run every variant defined in profiles.json and produce a PDF for each.
 
@@ -335,7 +341,7 @@ def render_all_variants(
         if only_variants and v["variant"] not in only_variants:
             continue
         stem = f"Eiselt__{company_slug}__{title_slug}__{v['variant']}"
-        pdf = render_pdf(v, output_dir, stem)
+        pdf = render_pdf(v, output_dir, stem, include_photo=include_photo)
         out.append({
             "variant": v["variant"],
             "variant_label": v["variant_label"],

@@ -169,6 +169,13 @@
       <div class="hint" id="headerHint"></div>
     </div>
   </div>
+  <div class="row" style="margin-top:8px">
+    <label style="display:inline-flex;gap:6px;align-items:center;font-weight:500;font-size:13px;cursor:pointer;flex:0 0 auto">
+      <input type="checkbox" id="includePhoto" checked>
+      Include photo
+    </label>
+    <span class="hint" style="margin-top:0">EU/Asia headers usually include · US/UK omit.</span>
+  </div>
   <label for="jdText" style="margin-top:14px">Job description</label>
   <textarea id="jdText" placeholder="Paste the full job description. The engine matches bullets against keywords like portfolio, governance, ServiceNow, transformation, steering, RAID, etc."></textarea>
   <div class="hint" id="jdHint">0 chars</div>
@@ -311,6 +318,7 @@ function editsFromView(view) {
     profile: view.profile,
     profile_label: view.profile_label,
     header_key: view.default_header_key || "germany",
+    include_photo: document.getElementById("includePhoto").checked,
     summary_id: (view.summary.picked[0] && view.summary.picked[0].id) || null,
     skill_ids: view.skills.picked.map(b => b.id),
     roles: view.roles.map(r => ({
@@ -496,6 +504,9 @@ document.querySelectorAll(".variant-render-btn").forEach(btn => {
     btn.textContent = "Rendering…";
     renderResults.style.display = "block";
     try {
+      // Keep edits.include_photo in sync with the live checkbox so toggling
+      // after the composition is built still takes effect.
+      state.edits.include_photo = document.getElementById("includePhoto").checked;
       const res = await fetch("/api/tailor_pdf_from_edits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -503,6 +514,7 @@ document.querySelectorAll(".variant-render-btn").forEach(btn => {
           company: companyEl.value.trim() || "Unknown",
           title: titleEl.value.trim() || "Role",
           variant: variant,
+          include_photo: state.edits.include_photo,
           edits: state.edits,
         }),
       });

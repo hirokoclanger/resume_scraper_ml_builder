@@ -735,6 +735,7 @@ function editsFromView(view) {
     profile: view.profile,
     profile_label: view.profile_label,
     header_key: view.default_header_key || "germany",
+    include_photo: true,
     summary_id: (view.summary.picked[0] && view.summary.picked[0].id) || null,
     skill_ids: view.skills.picked.map(b => b.id),
     roles: view.roles.map(r => ({
@@ -792,6 +793,10 @@ function renderTailorBody() {
             `<option value="${escapeHtml(k)}" ${k === edits.header_key ? "selected" : ""}>${escapeHtml(k)}</option>`
           ).join("")}
         </select>
+        <label style="font-size:12px;color:#555;margin-left:14px;cursor:pointer">
+          <input type="checkbox" data-action="set-photo" ${edits.include_photo === false ? "" : "checked"}>
+          Include photo
+        </label>
         <div style="font-size:11px;color:#555;margin-top:4px">
           ${escapeHtml(activeHeader.headline || "")}<br>
           ${escapeHtml(activeHeader.location || "")}<br>
@@ -959,6 +964,8 @@ tailorBody.addEventListener("change", (e) => {
   } else if (action === "set-header") {
     tailorState.edits.header_key = e.target.value || "germany";
     renderTailorBody();
+  } else if (action === "set-photo") {
+    tailorState.edits.include_photo = !!e.target.checked;
   }
 });
 
@@ -980,6 +987,7 @@ document.querySelectorAll(".variant-render-btn").forEach(btn => {
           company: tailorState.job ? tailorState.job.company : "",
           title: tailorState.job ? tailorState.job.title : "",
           variant: variant,
+          include_photo: tailorState.edits.include_photo !== false,
           edits: tailorState.edits,
         }),
       });

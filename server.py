@@ -208,7 +208,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "view": view,
         })
 
-    def _produce_pdfs(self, jd_text, company, title, header_key=None):
+    def _produce_pdfs(self, jd_text, company, title, header_key=None, include_photo=True):
         """Render every variant and return a list of {variant, profile, name, url}."""
         if not jd_text or len(jd_text.strip()) < 20:
             raise ValueError("JD text too short — need at least a paragraph of role description.")
@@ -227,7 +227,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             stem = f"Eiselt__{company_slug}__{title_slug}__{v['key']}"
             if header_key:
                 stem = f"Eiselt__{company_slug}__{title_slug}__{header_key}__{v['key']}"
-            pdf = render_pdf(variant, TAILORED_DIR, stem)
+            pdf = render_pdf(variant, TAILORED_DIR, stem, include_photo=include_photo)
             results.append({
                 "variant": v["key"],
                 "variant_label": v["label"],
@@ -254,6 +254,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 jd_text=(job.get("description") or ""),
                 company=job.get("companyName", ""),
                 title=job.get("title", ""),
+                include_photo=bool(body.get("include_photo", True)),
             )
         except RuntimeError as e:
             self._send_json({"error": str(e)}, status=500)
@@ -331,6 +332,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         valid_variants = {v["key"] for v in cfg["variants"]}
         company_label = (body.get("company") or "Library").strip()
         company_slug = slugify(company_label)
+        include_photo = bool(body.get("include_photo", True))
 
         results = []
         for tgt in targets:
@@ -346,7 +348,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     variant = build_variant(tgt["seed_jd"], corpus, cfg, variant_key)
                     variant["header"] = corpus["header_variants"][hk]
                     stem = f"Eiselt__{company_slug}__{tgt['key']}__{hk}__{variant_key}"
-                    pdf = render_pdf(variant, TAILORED_DIR, stem)
+                    pdf = render_pdf(variant, TAILORED_DIR, stem, include_photo=include_photo)
                     results.append({
                         "target": tgt["key"],
                         "target_label": tgt["label"],
@@ -432,12 +434,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         company_slug = slugify(company)
         title_slug = slugify(title)
         header_key = edits.get("header_key") or ""
+        include_photo = bool(body.get("include_photo", True))
         if header_key:
             stem = f"Eiselt__{company_slug}__{title_slug}__{header_key}__{variant_key}"
         else:
             stem = f"Eiselt__{company_slug}__{title_slug}__{variant_key}"
         try:
-            pdf = render_pdf(composition, TAILORED_DIR, stem)
+            pdf = render_pdf(composition, TAILORED_DIR, stem, include_photo=include_photo)
         except Exception as e:
             self._send_json({"error": f"{type(e).__name__}: {e}"}, status=500)
             return
@@ -455,11 +458,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         company = (body.get("company", "") or "Unknown").strip()
         title = (body.get("title", "") or "Role").strip()
         header_key = (body.get("header_key", "") or "").strip() or None
+        include_photo = bool(body.get("include_photo", True))
         if not jd_text:
             self._send_json({"error": "jd_text required"}, status=400)
             return
         try:
-            results = self._produce_pdfs(jd_text=jd_text, company=company, title=title, header_key=header_key)
+            results = self._produce_pdfs(jd_text=jd_text, company=company, title=title,
+                                         header_key=header_key, include_photo=include_photo)
         except RuntimeError as e:
             self._send_json({"error": str(e)}, status=500)
             return

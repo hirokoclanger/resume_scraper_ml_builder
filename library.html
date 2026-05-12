@@ -175,6 +175,10 @@
   <div class="controls">
     <button id="btnGenAll">Generate every cell</button>
     <button id="btnGenMissing" class="secondary">Generate only missing</button>
+    <label style="display:inline-flex;gap:6px;align-items:center;font-size:13px;cursor:pointer;margin-left:8px">
+      <input type="checkbox" id="batchIncludePhoto" checked>
+      Include photo in batch
+    </label>
     <span class="progress" id="progress"></span>
   </div>
   <div class="hint">
@@ -203,6 +207,10 @@
     <div class="modal-body" id="cellModalBody"><em>Loading…</em></div>
     <div class="modal-foot">
       <span class="modal-result" id="cellModalResult"></span>
+      <label style="display:inline-flex;gap:6px;align-items:center;font-size:13px;cursor:pointer;margin-right:6px">
+        <input type="checkbox" id="cellIncludePhoto" checked>
+        Include photo
+      </label>
       <button class="secondary" id="cellModalResetBtn">Reset to seed JD</button>
       <button id="cellModalRenderBtn">Save &amp; render PDF</button>
     </div>
@@ -355,7 +363,7 @@ async function runMissingSerially(pairs) {
 }
 
 async function runBatch(targetKeys, headerKeysSubset, progressMsg) {
-  const body = {};
+  const body = { include_photo: document.getElementById("batchIncludePhoto").checked };
   if (targetKeys) body.target_keys = targetKeys;
   if (headerKeysSubset) body.header_keys = headerKeysSubset;
   if (progressMsg) progressEl.textContent = progressMsg;
@@ -614,6 +622,8 @@ cellModalRenderBtn.addEventListener("click", async () => {
   cellModalResult.classList.remove("err");
   cellModalResult.textContent = "Rendering…";
   try {
+    const includePhoto = document.getElementById("cellIncludePhoto").checked;
+    cellState.edits.include_photo = includePhoto;
     const res = await fetch("/api/tailor_pdf_from_edits", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -621,6 +631,7 @@ cellModalRenderBtn.addEventListener("click", async () => {
         company: "Library",
         title: cellState.target.key,
         variant: variant,
+        include_photo: includePhoto,
         edits: cellState.edits,
       }),
     });

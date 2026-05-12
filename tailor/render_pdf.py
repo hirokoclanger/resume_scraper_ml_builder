@@ -103,6 +103,8 @@ def build_rendercv_yaml(tailored: dict, include_photo: bool = True) -> dict:
     if extra_phones:
         suffix = "  ·  " + "  ·  ".join(extra_phones)
         location = (location + suffix) if location else suffix.lstrip(" ·")
+    # Split address vs availability onto separate lines (ATS-friendly).
+    location = _format_location_for_typst(location)
     cv = {
         "name": h.get("name", "Philipp Eiselt"),
         "location": location or None,
@@ -249,6 +251,32 @@ def find_photo() -> Path | None:
         return PHOTO_CACHE
     except Exception:
         return None
+
+
+def _format_location_for_typst(raw: str) -> str:
+    """Convert a header location like
+        "Obere-Tiefenbach-Str. 10, 83734 Hausham, Germany · Open to relocate within EMEA - on-site or hybrid"
+    into Typst-formatted content where the first `·`-separated segment is
+    the postal address (line 1) and the rest joins with commas onto a new
+    line. The whole thing is boxed at 100 % page width so the trailing
+    contacts (email / phone / website) are forced onto their own line
+    rather than running onto the relocation line.
+
+    Three reasons to bake this in:
+      - ATS parsers prefer simple commas over middle dots.
+      - "EMEA - on-site or hybrid" reads as a stray hyphen for ATS; comma is
+        unambiguous.
+      - Wrapping locations cleanly is what makes a header look professional.
+    Falls back to the raw string when there's only one segment.
+    """
+    if not raw:
+        return raw
+    parts = [p.strip() for p in raw.split(" · ") if p.strip()]
+    if len(parts) <= 1:
+        return raw
+    addr = parts[0].rstrip(",")
+    rest = ", ".join(re.sub(r"\s+-\s+", ", ", p) for p in parts[1:])
+    return f"#pad(right: 0pt, box(width: 100%)[{addr}, #linebreak() {rest}])"
 
 
 def _split_phones(text: str) -> tuple[str | None, list[str]]:
